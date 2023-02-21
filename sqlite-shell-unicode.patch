@@ -1,0 +1,15 @@
+diff -ub old/shell.c new/shell.c
+--- old/shell.c	2022-12-29 03:26:39.000000000 +1300
++++ new/shell.c	2023-02-21 18:13:30.793736600 +1300
+@@ -499,9 +499,9 @@
+   va_start(ap, zFormat);
+   if( stdout_is_console && (out==stdout || out==stderr) ){
+     char *z1 = sqlite3_vmprintf(zFormat, ap);
+-    char *z2 = sqlite3_win32_utf8_to_mbcs_v2(z1, 0);
++    LPWSTR z2 = sqlite3_win32_utf8_to_unicode(z1);
+     sqlite3_free(z1);
+-    fputs(z2, out);
++    WriteConsoleW((HANDLE)_get_osfhandle(_fileno(out)), z2, (DWORD)wcslen(z2), NULL, NULL);
+     sqlite3_free(z2);
+   }else{
+     vfprintf(out, zFormat, ap);
