@@ -1,6 +1,5 @@
-diff -ub old/shell.c new/shell.c
 --- old/shell.c	2022-12-29 03:26:39.000000000 +1300
-+++ new/shell.c	2023-02-21 18:13:30.793736600 +1300
++++ new/shell.c	2023-02-23 22:54:18.820017900 +1300
 @@ -499,9 +499,9 @@
    va_start(ap, zFormat);
    if( stdout_is_console && (out==stdout || out==stderr) ){
@@ -13,3 +12,103 @@ diff -ub old/shell.c new/shell.c
      sqlite3_free(z2);
    }else{
      vfprintf(out, zFormat, ap);
+@@ -673,6 +673,61 @@
+ }
+ 
+ /*
++** This subroutine is called from local_getline to handle unicode on win32.
++*/
++static char *local_getline_interactive_win32(char *zLine){
++  int nLine = zLine==0 ? 0 : 100;
++  int n = 0;
++  WCHAR* wzLine = (WCHAR*)zLine;
++  DWORD r;
++  char* zTrans;
++
++  while( 1 ){
++    if( n+100>nLine ){
++      nLine = nLine*2 + 100;
++      wzLine = realloc(wzLine, nLine*2);
++      shell_check_oom(wzLine);
++    }
++    r = 0;
++    if( !ReadConsoleW(GetStdHandle(STD_INPUT_HANDLE), &wzLine[n], nLine - n, &r, NULL) ){
++      r = 0;
++    }
++    if( r==0 ){
++      if( n==0 ){
++        free(wzLine);
++        return 0;
++      }
++      wzLine[n] = 0;
++      break;
++    } else {
++      wzLine[r] = 0;
++    }
++    while( wzLine[n] ) n++;
++    if( n>0 && wzLine[n-1]=='\n' ){
++      n--;
++      if( n>0 && wzLine[n-1]=='\r' ) n--;
++      wzLine[n] = 0;
++      break;
++    }
++  }
++
++  zLine = (char*)wzLine;
++  zTrans = sqlite3_win32_unicode_to_utf8(wzLine);
++  if( zTrans ){
++    i64 nTrans = strlen(zTrans)+1;
++    if( nTrans>nLine*2 ){
++      zLine = realloc(zLine, nTrans);
++      shell_check_oom(zLine);
++    }
++    memcpy(zLine, zTrans, nTrans);
++    sqlite3_free(zTrans);
++  } else {
++    *zLine = 0;
++  }
++  return zLine;
++}
++
++/*
+ ** This routine reads a line of text from FILE in, stores
+ ** the text in memory obtained from malloc() and returns a pointer
+ ** to the text.  NULL is returned at end of file, or if malloc()
+@@ -685,6 +740,14 @@
+   int nLine = zLine==0 ? 0 : 100;
+   int n = 0;
+ 
++#if defined(_WIN32) || defined(WIN32)
++  /* For interactive input on Windows systems, translate the
++  ** UTF-16 characters into UTF-8. */
++  if( stdin_is_interactive && in==stdin ){
++    return local_getline_interactive_win32(zLine);
++  }
++#endif /* defined(_WIN32) || defined(WIN32) */
++
+   while( 1 ){
+     if( n+100>nLine ){
+       nLine = nLine*2 + 100;
+@@ -707,22 +770,6 @@
+       break;
+     }
+   }
+-#if defined(_WIN32) || defined(WIN32)
+-  /* For interactive input on Windows systems, translate the
+-  ** multi-byte characterset characters into UTF-8. */
+-  if( stdin_is_interactive && in==stdin ){
+-    char *zTrans = sqlite3_win32_mbcs_to_utf8_v2(zLine, 0);
+-    if( zTrans ){
+-      i64 nTrans = strlen(zTrans)+1;
+-      if( nTrans>nLine ){
+-        zLine = realloc(zLine, nTrans);
+-        shell_check_oom(zLine);
+-      }
+-      memcpy(zLine, zTrans, nTrans);
+-      sqlite3_free(zTrans);
+-    }
+-  }
+-#endif /* defined(_WIN32) || defined(WIN32) */
+   return zLine;
+ }
+ 
