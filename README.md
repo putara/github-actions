@@ -4,7 +4,9 @@ GitHub actions to build open-source tools.
 
 ## SQLite3 shell
 
-* Add Unicode support to `sqlite3.exe` (see `sqlite-shell-unicode.patch`)
+See `sqlite3-shell` folder.
+
+* Add Unicode support to `sqlite3.exe`
 
 <img alt="Screenshot of sqlite3.exe" src="../assets/sqlite3-shell-unicode.png?raw=true" width="320">
 
