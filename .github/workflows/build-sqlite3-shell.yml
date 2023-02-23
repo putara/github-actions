@@ -16,7 +16,7 @@ jobs:
         unzip sqlite-amalgamation.zip -dsqlite-tmp
         mkdir sqlite-src
         for f in 'sqlite-tmp/*'; do mv $f/* sqlite-src/; done
-        patch -ui sqlite-shell-unicode.patch sqlite-src/shell.c
+        patch -ui sqlite3-shell/unicode-support-on-windows.patch sqlite-src/shell.c
       shell: bash
     - name: Build sqlite3.exe
       run: |
