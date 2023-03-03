@@ -1,0 +1,39 @@
+name: Build woff2 tool
+on:
+  push:
+    branches: ["main"]
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: msys2/setup-msys2@v2
+      with:
+        msystem: mingw32
+        install: >-
+          base-devel
+          gcc
+      id: setup
+    - name: Download woff2 source code
+      run: |
+        git clone https://github.com/google/woff2.git woff2-src
+        cd woff2-src
+        git submodule init
+        git submodule update
+        git config user.email nobody@localhost
+        git config user.name nobody
+        git am -3 --ignore-whitespace ../woff2/make-a-single-program.patch
+    - name: Build woff2.exe
+      run: |
+        cd woff2-src/brotli
+        make lib
+        cd ..
+        make
+        strip woff2.exe
+      shell: msys2 {0}
+    - name: Upload files
+      uses: actions/upload-artifact@v3
+      with:
+        name: woff2
+        path: |
+          woff2-src/woff2.exe
