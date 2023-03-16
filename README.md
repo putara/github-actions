@@ -21,5 +21,12 @@ See `woff2` folder.
   woff2 i myfont.woff2
   ```
 
+## MiniWeb
+
+See `miniweb` folder.
+
+* Support `.json`, `.svg` and `.svgz`
+* Support VC++ build
+
 ## License
 Anything in `.github` is released under the [WTFPL](http://www.wtfpl.net/about/).

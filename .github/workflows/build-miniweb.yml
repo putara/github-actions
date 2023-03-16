@@ -1,0 +1,34 @@
+name: Build miniweb
+on:
+  push:
+    branches: ["main"]
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: amd64
+    - name: Download miniweb source code
+      run: |
+        git clone https://github.com/avih/miniweb.git miniweb-src
+        cd miniweb-src
+        git config user.email nobody@localhost
+        git config user.name nobody
+        git am -3 --ignore-whitespace ../miniweb/0001-http-support-svg-and-json-content-type.patch
+        git am -3 --ignore-whitespace ../miniweb/0002-win32-support-vc-compiler.patch
+        git am -3 --ignore-whitespace ../miniweb/0004-minor-optimisation.patch
+    - name: Build miniweb.exe
+      run: |
+        cd miniweb-src
+        nmake /f Makefile.vc
+    - name: Upload files
+      uses: actions/upload-artifact@v3
+      with:
+        name: miniweb
+        path: |
+          miniweb-src/bin/miniweb.exe
+          miniweb-src/bin/miniweb.map
+          miniweb-src/bin/miniweb.pdb
+          miniweb-src/bin/htdocs/

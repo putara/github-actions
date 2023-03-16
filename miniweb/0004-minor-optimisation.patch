@@ -1,0 +1,125 @@
+From 346dc80e5ee1128f9611a912dbc487570d03ad4d Mon Sep 17 00:00:00 2001
+From: putara <38089082+putara@users.noreply.github.com>
+Date: Sun, 26 Apr 2020 11:49:34 +1200
+Subject: [PATCH 4/4] minor optimisation
+
+---
+ http.c    | 24 ++++++++++++------------
+ miniweb.c |  4 ++--
+ 2 files changed, 14 insertions(+), 14 deletions(-)
+
+diff --git a/http.c b/http.c
+index 910f755..46e5434 100644
+--- a/http.c
++++ b/http.c
+@@ -26,7 +26,7 @@
+ ////////////////////////////////////////////////////////////////////////////
+ // global variables
+ ////////////////////////////////////////////////////////////////////////////
+-const char* status200[] = {
++const char* const status200[] = {
+ 	"OK",		/* 200 */
+ 	"Created",	/* 201 */
+ 	"Accepted", /* 202 */
+@@ -36,7 +36,7 @@ const char* status200[] = {
+ 	"Partial Content", /* 206 */
+ };
+ 
+-const char* status300[] = {
++const char* const status300[] = {
+ 	"Multiple Choices", /* 300 */
+ 	"Moved Permanently", /* 301 */
+ 	"Found", /* 302 */
+@@ -47,7 +47,7 @@ const char* status300[] = {
+ 	"Temporary Redirect", /* 307 */
+ };
+ 
+-const char* status400[] = {
++const char* const status400[] = {
+ 	"Bad Request", /* 400 */
+ 	"Unauthorized", /* 401 */
+ 	"", /* 402 */
+@@ -65,7 +65,7 @@ const char* status400[] = {
+ 	"Request-URI Too Long", /* 414 */
+ };
+ 
+-const char* status500[] = {
++const char* const status500[] = {
+ 	"Internal Server Error", /* 500 */
+ 	"Not Implemented", /* 501 */
+ 	"Bad Gateway", /* 502 */
+@@ -73,7 +73,7 @@ const char* status500[] = {
+ 	"Gateway Timeout", /* 504 */
+ };
+ 
+-const char* contentTypeTable[]={
++const char* const contentTypeTable[]={
+ 	"application/octet-stream",
+ 	"text/html",
+ 	"text/xml",
+@@ -104,17 +104,17 @@ const char* contentTypeTable[]={
+ 	"image/svg+xml",
+ };
+ 
+-char* defaultPages[]={"index.htm","index.html","default.htm","main.xul"};
++const char* const defaultPages[]={"index.htm","index.html","default.htm","main.xul"};
+ 
+-FILE *fpLog=NULL;
++FILE *fpLog;
+ 
+ ////////////////////////////////////////////////////////////////////////////
+ // API callsc
+ ////////////////////////////////////////////////////////////////////////////
+ 
+-const char *dayNames="Sun\0Mon\0Tue\0Wed\0Thu\0Fri\0Sat";
+-const char *monthNames="Jan\0Feb\0Mar\0Apr\0May\0Jun\0Jul\0Aug\0Sep\0Oct\0Nov\0Dec";
+-const char *httpDateTimeFormat="%s, %02d %s %d %02d:%02d:%02d GMT";
++const char* const dayNames="Sun\0Mon\0Tue\0Wed\0Thu\0Fri\0Sat";
++const char* const monthNames="Jan\0Feb\0Mar\0Apr\0May\0Jun\0Jul\0Aug\0Sep\0Oct\0Nov\0Dec";
++const char* const httpDateTimeFormat="%s, %02d %s %d %02d:%02d:%02d GMT";
+ 
+ char* mwGetVarValue(HttpVariables* vars, const char *varname, const char *defval)
+ {
+@@ -258,7 +258,7 @@ int mwServerStart(HttpParam* hp)
+ ////////////////////////////////////////////////////////////////////////////
+ int mwServerShutdown(HttpParam* hp, mwShutdownCallback cb, unsigned int timeout_ms)
+ {
+-	int i;
++	unsigned int i;
+ 	if (hp->bKillingWebserver || hp->bKillWebserver || !hp->bWebserverRunning)
+ 		return -1;  // call at invalid state
+ 	hp->bKillingWebserver = TRUE;
+@@ -1561,7 +1561,7 @@ int _mwListDirectory_internal(HttpSocket* phsSocket, char* dir, int isscript, in
+ 	return 0;
+ }
+ 
+-const char *dir_list_js = ""
++const char* const dir_list_js = ""
+ "document.title = title; document.getElementById('title').innerHTML = title;\n"
+ "var DEF_ORDER = 'N+';  // by name by default\n"
+ "var DEF_DIR = {N: 1, S: -1, T: 1, M: -1};  // default dir for each column (date/size are reversed)\n"
+diff --git a/miniweb.c b/miniweb.c
+index bdbae7b..efb72c2 100644
+--- a/miniweb.c
++++ b/miniweb.c
+@@ -39,7 +39,7 @@ int uhAsyncDataTest(UrlHandlerParam* param);
+ int uhRTSP(UrlHandlerParam* param);
+ int uhSerial(UrlHandlerParam* param);
+ 
+-UrlHandler urlHandlerList[]={
++const UrlHandler urlHandlerList[]={
+ 	{"stats", uhStats, NULL},
+ #ifdef ENABLE_SERIAL
+ 	{"serial", uhSerial, NULL},
+@@ -67,7 +67,7 @@ UrlHandler urlHandlerList[]={
+ };
+ 
+ #ifndef DISABLE_BASIC_WWWAUTH
+-AuthHandler authHandlerList[]={
++const AuthHandler authHandlerList[]={
+ 	{"stats", "user", "pass", "group=admin", ""},
+ 	{NULL}
+ };
+-- 
+2.29.2.windows.2
+

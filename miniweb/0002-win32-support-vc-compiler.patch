@@ -1,0 +1,106 @@
+From 51a4ec96a96e559f523d7cd478f2f881f222f762 Mon Sep 17 00:00:00 2001
+From: putara <38089082+putara@users.noreply.github.com>
+Date: Sun, 26 Apr 2020 11:49:34 +1200
+Subject: [PATCH 2/4] win32: support vc++ compiler
+
+---
+ Makefile.vc | 87 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 87 insertions(+)
+ create mode 100644 Makefile.vc
+
+diff --git a/Makefile.vc b/Makefile.vc
+new file mode 100644
+index 0000000..8984854
+--- /dev/null
++++ b/Makefile.vc
+@@ -0,0 +1,87 @@
++INTDIR = obj
++OUTDIR = bin
++TARGET = miniweb
++
++TARGET_EXE = $(OUTDIR)\$(TARGET).exe
++TARGET_MAP = $(OUTDIR)\$(TARGET).map
++TARGET_PDB = $(OUTDIR)\$(TARGET).pdb
++TARGET_OBJS = \
++ "$(INTDIR)\httppil.obj"\
++ "$(INTDIR)\http.obj"\
++ "$(INTDIR)\httpxml.obj"\
++ "$(INTDIR)\httphandler.obj"\
++ "$(INTDIR)\httppost.obj"\
++ "$(INTDIR)\httpauth.obj"\
++ "$(INTDIR)\miniweb.obj"
++
++CC = cl.exe
++LD = link.exe
++RC = rc.exe
++
++!if "$(VSCMD_ARG_TGT_ARCH)" == "x64"
++TARGET_ARCH = x64
++!else
++TARGET_ARCH = x86
++!endif
++
++CFLAGS = /nologo /c /GF /GL /GR- /GS /Gy /MD /O1ib2 /W4 /wd4127 /wd4706 /Zi /fp:fast /Fd"$(INTDIR)/"
++LDFLAGS = /nologo /time /dynamicbase:no /ltcg /machine:$(TARGET_ARCH) /map:"$(TARGET_MAP)" /nxcompat /opt:icf /opt:ref /release /debug /PDBALTPATH:"%_PDB%"
++RFLAGS = /d "NDEBUG" /l 0
++
++CDEFS = /D "NDEBUG" /D "_WINDOWS" /D "WIN32"
++LDLIBS = kernel32.lib ws2_32.lib shell32.lib iphlpapi.lib
++
++!if defined(DEBUG)
++CDEFS = $(CDEFS) /D "HTTP_DEBUG"
++!endif
++
++all: "$(INTDIR)" "$(OUTDIR)" "$(TARGET_EXE)"
++
++clean: cleanobj
++ -@erase "$(TARGET_EXE)" 2>NUL
++ -@erase "$(TARGET_MAP)" 2>NUL
++ -@rmdir "$(INTDIR)" 2>NUL
++
++cleanobj: cleanpdb cleanobjonly
++
++cleanpdb:
++ -@erase "$(TARGET_PDB)" 2>NUL
++
++cleanobjonly:
++ -@erase "$(INTDIR)\*.cod" 2>NUL
++ -@erase $(TARGET_OBJS) 2>NUL
++ -@erase "$(INTDIR)\vc??.pdb" 2>NUL
++ -@erase "$(INTDIR)\vc??.idb" 2>NUL
++
++"$(INTDIR)":
++ @if not exist "$(INTDIR)" mkdir "$(INTDIR)"
++
++"$(OUTDIR)":
++ @if not exist "$(OUTDIR)" mkdir "$(OUTDIR)"
++
++"$(TARGET_EXE)" : $(TARGET_OBJS)
++ $(LD) /out:$@ $(LDFLAGS) $(LDLIBS) $(TARGET_OBJS)
++
++.SUFFIXES: .c .cpp .obj .rc .res
++
++.c{$(INTDIR)}.obj::
++ $(CC) $(CFLAGS) $(CDEFS) /Fo"$(INTDIR)/" $<
++
++.cpp{$(INTDIR)}.obj::
++ $(CC) $(CFLAGS) $(CDEFS) /Fo"$(INTDIR)/" $<
++
++.rc{$(INTDIR)}.res:
++ $(RC) $(RFLAGS) /fo$@ $<
++
++"$(INTDIR)\win_snprintf.obj": win32\win_snprintf.c
++ $(CC) $(CFLAGS) $(CDEFS) /Fo"$(INTDIR)\win_snprintf.obj" win32\win_snprintf.c
++
++HEADERS = httpint.h httpapi.h httpxml.h
++
++"$(INTDIR)\httppil.obj": httppil.c $(HEADERS)
++"$(INTDIR)\http.obj": http.c $(HEADERS)
++"$(INTDIR)\httpxml.obj": httpxml.c $(HEADERS)
++"$(INTDIR)\httphandler.obj": httphandler.c $(HEADERS)
++"$(INTDIR)\httppost.obj": httppost.c $(HEADERS)
++"$(INTDIR)\httpauth.obj": httpauth.c $(HEADERS)
++"$(INTDIR)\miniweb.obj": miniweb.c $(HEADERS)
+-- 
+2.29.2.windows.2
+

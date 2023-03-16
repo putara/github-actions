@@ -1,0 +1,71 @@
+From ffd32e0d3235f6eec3de1cc083d12421cb183189 Mon Sep 17 00:00:00 2001
+From: putara <38089082+putara@users.noreply.github.com>
+Date: Sun, 26 Apr 2020 11:42:19 +1200
+Subject: [PATCH 1/4] http: support svg and json content type
+
+---
+ http.c    | 5 +++++
+ httpapi.h | 2 ++
+ httpint.h | 3 +++
+ 3 files changed, 10 insertions(+)
+
+diff --git a/http.c b/http.c
+index 238940b..910f755 100644
+--- a/http.c
++++ b/http.c
+@@ -100,6 +100,8 @@ const char* contentTypeTable[]={
+ 	"application/x-mpegURL",
+ 	"application/sdp",
+ 	"application/binhex",
++	"application/json",
++	"image/svg+xml",
+ };
+ 
+ char* defaultPages[]={"index.htm","index.html","default.htm","main.xul"};
+@@ -2286,6 +2288,7 @@ int mwGetContentType(const char *pchExtname)
+ 		case FILEEXT_3GP:	return HTTPFILETYPE_3GP;
+ 		case FILEEXT_ASF:	return HTTPFILETYPE_ASF;
+ 		case FILEEXT_SDP:	return HTTPFILETYPE_SDP;
++		case FILEEXT_SVG:	return HTTPFILETYPE_SVG;
+ 		}
+ 	} else if (pchExtname[4]=='\0' || pchExtname[4]=='?') {
+ 		memcpy(&dwExt, pchExtname, sizeof(dwExt));
+@@ -2294,6 +2297,8 @@ int mwGetContentType(const char *pchExtname)
+ 		case FILEEXT_HTML:	return HTTPFILETYPE_HTML;
+ 		case FILEEXT_MPEG:	return HTTPFILETYPE_MPEG;
+ 		case FILEEXT_M3U8:	return HTTPFILETYPE_M3U8;
++		case FILEEXT_JSON:	return HTTPFILETYPE_JSON;
++		case FILEEXT_SVGZ:	return HTTPFILETYPE_SVG;
+ 		}
+ 	}
+ 	return HTTPFILETYPE_OCTET;
+diff --git a/httpapi.h b/httpapi.h
+index 137c72e..4a65b27 100644
+--- a/httpapi.h
++++ b/httpapi.h
+@@ -80,6 +80,8 @@ typedef enum {
+   HTTPFILETYPE_M3U8,
+   HTTPFILETYPE_SDP,
+   HTTPFILETYPE_HEX,
++  HTTPFILETYPE_JSON,
++  HTTPFILETYPE_SVG,
+ } HttpFileType;
+ 
+ #define MAXPOSTPARAMS 50
+diff --git a/httpint.h b/httpint.h
+index a131b0d..acb6066 100644
+--- a/httpint.h
++++ b/httpint.h
+@@ -78,6 +78,9 @@
+ #define FILEEXT_TS DEFDWORD('T', 'S', 0, 0)
+ #define FILEEXT_M3U8 DEFDWORD('M', '3' - 32, 'U', '8' - 32)
+ #define FILEEXT_SDP DEFDWORD('S', 'D', 'P', 0)
++#define FILEEXT_JSON DEFDWORD('J','S','O','N')
++#define FILEEXT_SVG DEFDWORD('S','V','G',0)
++#define FILEEXT_SVGZ DEFDWORD('S','V','G','Z')
+ 
+ // Settings for http server
+ #define HTTP_EXPIRATION_TIME (120/*secs*/)
+-- 
+2.29.2.windows.2
+
