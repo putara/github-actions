@@ -1,0 +1,47 @@
+name: Build SQLite3 shell
+on:
+  workflow_call:
+
+jobs:
+  setup:
+    uses: ./.github/workflows/setup-wdk.yml
+  build:
+    runs-on: windows-latest
+    needs: setup
+    env:
+      WINDDKROOT: ${{ needs.setup.outputs.winddkroot }}
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/cache@v3
+      name: Extract WDK
+      with:
+        path: ${{ needs.setup.outputs.winddkroot }}
+        key: ${{ runner.os }}-wdk-7600.16385.1
+        fail-on-cache-miss: true
+    - name: Download source code
+      run: |
+        url="$(curl -s#L https://sqlite.org/download.html | grep PRODUCT,.*/sqlite-amalgamation- | cut -d, -f3)"
+        if [[ ! "$url" =~ ^[0-9]+/sqlite-amalgamation-[0-9]+\.zip$ ]]; then echo "Unknown URL $url"; exit 1; fi
+        echo "Downloading $url"
+        curl -# "https://sqlite.org/$url" -o sqlite-amalgamation.zip
+        unzip sqlite-amalgamation.zip -dsqlite-tmp
+        mkdir sqlite-src
+        for f in 'sqlite-tmp/*'; do mv $f/* sqlite-src/; done
+        patch -ui sqlite3-shell/unicode-support-on-windows.patch sqlite-src/shell.c
+      shell: bash
+    - name: Build
+      env:
+        WINDDKROOT: ${{ needs.setup.outputs.winddkroot }}
+      run: |
+        call "%WINDDKROOT%\bin\startddk" /x64 /win7
+        cd sqlite-src
+        cl /nologo /W3 /O2 /MD /EHs-c- /GR- /GS /GL /GF /Gy /Zi shell.c sqlite3.c /D "localtime_s=_localtime64_s" /link /nologo /time /out:sqlite3.exe /map:sqlite3.map /dynamicbase:no /nxcompat /ltcg /opt:icf /opt:ref /pdbaltpath:"%%_PDB%%"
+      shell: cmd
+    - name: Upload files
+      uses: actions/upload-artifact@v3
+      with:
+        name: sqlite3
+        path: |
+          sqlite-src/sqlite3.exe
+          sqlite-src/sqlite3.pdb
+        if-no-files-found: error
