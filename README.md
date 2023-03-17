@@ -28,5 +28,12 @@ See `miniweb` folder.
 * Support `.json`, `.svg` and `.svgz`
 * Support VC++ build
 
+## bmp2png
+
+See [bmp2png](https://github.com/putara/bmp2png) repo.
+
+:warning: **False positive**  
+Some anti-virus software flags this small app as a malware.
+
 ## License
 Anything in `.github` is released under the [WTFPL](http://www.wtfpl.net/about/).

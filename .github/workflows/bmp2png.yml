@@ -1,0 +1,37 @@
+name: Build bmp2png
+on:
+  workflow_call:
+
+jobs:
+  setup:
+    uses: ./.github/workflows/setup-wdk.yml
+  build:
+    runs-on: windows-latest
+    needs: setup
+    env:
+      WINDDKROOT: ${{ needs.setup.outputs.winddkroot }}
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/cache@v3
+      name: Extract WDK
+      with:
+        path: ${{ needs.setup.outputs.winddkroot }}
+        key: ${{ runner.os }}-wdk
+        fail-on-cache-miss: true
+    - name: Build
+      env:
+        WINDDKROOT: ${{ steps.setup.outputs.winddkroot }}
+      run: |
+        call wdk\startddk /x86 /xp
+        git clone https://github.com/putara/bmp2png.git
+        cd bmp2png
+        nmake /f bmp2png.cpp
+      shell: cmd
+    - name: Upload files
+      uses: actions/upload-artifact@v3
+      with:
+        name: bmp2png
+        path: |
+          bmp2png\bmp2png.exe
+          bmp2png\bmp2png.map
+        if-no-files-found: error

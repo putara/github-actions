@@ -10,3 +10,5 @@ jobs:
     uses: ./.github/workflows/sqlite3-shell.yml
   woff2:
     uses: ./.github/workflows/woff2-tool.yml
+  bmp2png:
+    uses: ./.github/workflows/bmp2png.yml
