@@ -1,16 +1,24 @@
 name: Build miniweb
 on:
-  push:
-    branches: ["main"]
+  workflow_call:
+
 jobs:
+  setup:
+    uses: ./.github/workflows/setup-wdk.yml
   build:
     runs-on: windows-latest
+    needs: setup
+    env:
+      WINDDKROOT: ${{ needs.setup.outputs.winddkroot }}
     steps:
     - uses: actions/checkout@v3
-    - uses: ilammy/msvc-dev-cmd@v1
+    - uses: actions/cache@v3
+      name: Extract WDK
       with:
-        arch: amd64
-    - name: Download miniweb source code
+        path: ${{ needs.setup.outputs.winddkroot }}
+        key: ${{ runner.os }}-wdk
+        fail-on-cache-miss: true
+    - name: Download source code
       run: |
         git clone https://github.com/avih/miniweb.git miniweb-src
         cd miniweb-src
@@ -18,11 +26,15 @@ jobs:
         git config user.name nobody
         git am -3 --ignore-whitespace ../miniweb/0001-http-support-svg-and-json-content-type.patch
         git am -3 --ignore-whitespace ../miniweb/0002-win32-support-vc-compiler.patch
+        git am -3 --ignore-whitespace ../miniweb/0003-win32-support-old-vc-compiler.patch
         git am -3 --ignore-whitespace ../miniweb/0004-minor-optimisation.patch
-    - name: Build miniweb.exe
+      shell: bash
+    - name: Build
       run: |
+        call wdk\startddk /x86 /win7
         cd miniweb-src
         nmake /f Makefile.vc
+      shell: cmd
     - name: Upload files
       uses: actions/upload-artifact@v3
       with:
@@ -32,3 +44,4 @@ jobs:
           miniweb-src/bin/miniweb.map
           miniweb-src/bin/miniweb.pdb
           miniweb-src/bin/htdocs/
+        if-no-files-found: error

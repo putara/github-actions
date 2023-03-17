@@ -1,0 +1,75 @@
+on:
+  workflow_call:
+    outputs:
+      winddkroot:
+        description: "The root directory of WDK"
+        value: ${{ jobs.setup.outputs.winddkroot }}
+
+env:
+  WINDDKROOT: C:\WinDDK\7600.16385.1
+
+jobs:
+  setup:
+    name: Set up WDK 7.1
+    runs-on: windows-latest
+    outputs:
+      winddkroot: ${{ steps.vars.outputs.winddkroot }}
+    steps:
+    - name: Set outputs
+      id: vars
+      run: echo "winddkroot=$WINDDKROOT" >> "$GITHUB_OUTPUT"
+      shell: bash
+    - uses: actions/cache@v3
+      id: cache-wdk
+      name: Cache WDK
+      with:
+        path: ${{ env.WINDDKROOT }}
+        key: ${{ runner.os }}-wdk
+        lookup-only: true
+    - uses: actions/checkout@v3
+      if: steps.cache-wdk.outputs.cache-hit != 'true'
+    - name: Install WDK
+      if: steps.cache-wdk.outputs.cache-hit != 'true'
+      run: |
+        choco install -y 7zip
+        saps -nn -wait 'curl.exe' -a '-#', '-L', "https://download.microsoft.com/download/4/A/2/4A25C7D5-EFBE-4182-B6A9-AE6850409A78/GRMWDK_EN_7600_1.ISO", -o, "$env:RUNNER_TEMP\wdk.iso"
+        saps -nn -wait '7z.exe' -a 'x', "-o$env:RUNNER_TEMP\WDK", "$env:RUNNER_TEMP\wdk.iso"
+        saps -nn -wait "$env:RUNNER_TEMP\WDK\KitSetup.exe" -a '/no-view', '/ui-level', 'express', '/install', '{6B3A2F33-2C3D-393A-3840-2D4763623845}', '{6B3A2F33-2C3D-393A-3840-2D4765643845}', '{302E283A-2741-5D5C-323F-334C4D4E4F50}', '{302E283A-2741-5F5E-323F-334C4D4E4F50}', '{3A2E393B-2935-332D-3F2C-466261374438}', '{3A2E393B-2935-332D-3F2C-466463374438}', '{3B3D3633-312B-3D2A-4462-613542364F50}', '{7977727B-2673-3279-2134-7B7831453343}', '{2C2A272B-2D3B-3D48-494A-4B4C4D4E4F50}'
+        # Patch link.exe to prevent generating the Rich block
+        function Patch-Linker($Path, $Hash) {
+          $tmpfile = (New-TemporaryFile).fullname
+          copy $Path $tmpfile
+          $time = [System.IO.File]::GetLastWriteTimeUtc($Path)
+          $f = [System.IO.File]::Open($tmpfile, 'open')
+          try {
+            [void]$f.Seek(0x6BE4C, 'begin')
+            $f.WriteByte(0x33)
+            $f.WriteByte(0xc0)
+          } finally {
+            $f.Close()
+          }
+          if ($Hash -eq (Get-FileHash -a MD5 $tmpfile).hash) {
+            copy -force $tmpfile $Path
+            [System.IO.File]::SetLastWriteTimeUtc($Path, $time)
+            Write-Host ('Patched linker ' + $Path)
+          } else {
+            Write-Host -f Yellow ('Patching linker failed for ' + $Path)
+          }
+          ri $tmpfile
+        }
+        Patch-Linker "$env:WINDDKROOT\bin\x86\x86\link.exe" '7f3638c9704ea1fb775003fbe13eaf7d'
+        Patch-Linker "$env:WINDDKROOT\bin\x86\amd64\link.exe" '7a37d4e513f9215f414cf606dd639890'
+      shell: pwsh
+    - name: Install stdint.h
+      if: steps.cache-wdk.outputs.cache-hit != 'true'
+      run: |
+        git clone https://github.com/chemeris/msinttypes.git "$RUNNER_TEMP/msinttypes"
+        cp "$RUNNER_TEMP/msinttypes/inttypes.h" "$WINDDKROOT/inc/crt"
+        cp "$RUNNER_TEMP/msinttypes/stdint.h" "$WINDDKROOT/inc/crt"
+      shell: bash
+    - name: Copy missing headers
+      if: steps.cache-wdk.outputs.cache-hit != 'true'
+      run: |
+        tar --zstd -xvf api.tar.zst -C "%WINDDKROOT%\inc\api"
+        tar --zstd -xvf crt.tar.zst -C "%WINDDKROOT%\inc\crt"
+      shell: cmd
