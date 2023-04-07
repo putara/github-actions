@@ -1,6 +1,11 @@
 name: Build miniweb
 on:
-  workflow_call:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - '.github/workflows/miniweb.yml'
+      - 'miniweb/**'
 
 jobs:
   setup:
@@ -11,14 +16,40 @@ jobs:
     env:
       WINDDKROOT: ${{ needs.setup.outputs.winddkroot }}
     steps:
+    - name: Get the latest commit
+      run: |
+        rev=$(git ls-remote -h https://github.com/avih/miniweb.git master | cut -f 1)
+        echo "miniweb-rev=$rev" >> $GITHUB_ENV
+        echo "miniweb-tag=miniweb-${rev:0:7}" >> $GITHUB_ENV
+      shell: bash
+    - name: Restore last build info
+      uses: actions/cache@v3
+      with:
+        path: C:\TEMP\GAC\miniweb
+        key: ${{ runner.os }}--miniweb
+    - name: Check last build info
+      id: check
+      run: |
+        tag_file=/c/TEMP/GAC/miniweb/tag
+        last_tag=$(cat "$tag_file" 2>/dev/null || echo -n)
+        if [[ "$last_tag" != "${{ env.miniweb-rev }}" ]]; then
+          mkdir -p "${tag_file%/*}"
+          echo "${{ env.miniweb-rev }}" > "$tag_file"
+        else
+          echo 'skip-release=true' >> "$GITHUB_OUTPUT"
+        fi
+      shell: bash
     - uses: actions/checkout@v3
+      if: steps.check.outputs.skip-release != 'true'
     - uses: actions/cache@v3
+      if: steps.check.outputs.skip-release != 'true'
       name: Extract WDK
       with:
         path: ${{ needs.setup.outputs.winddkroot }}
         key: ${{ runner.os }}-wdk
         fail-on-cache-miss: true
     - name: Download source code
+      if: steps.check.outputs.skip-release != 'true'
       run: |
         git clone https://github.com/avih/miniweb.git miniweb-src
         cd miniweb-src
@@ -29,13 +60,25 @@ jobs:
         git am -3 --ignore-whitespace ../miniweb/0003-win32-support-old-vc-compiler.patch
         git am -3 --ignore-whitespace ../miniweb/0004-minor-optimisation.patch
       shell: bash
+    - name: Tag version
+      if: steps.check.outputs.skip-release != 'true'
+      run: |
+        tag=${{ env.miniweb-tag }}
+        git config user.name "${GITHUB_ACTOR}"
+        git config user.email "${GITHUB_ACTOR_ID}+${GITHUB_ACTOR}@users.noreply.github.com"
+        git tag -a "$tag" -m "patched upstream ${{ env.miniweb-rev }}"
+        git push origin "$tag" -f
+        mkdir -p /c/TEMP/GAC/miniweb && echo "$tag" > /c/TEMP/GAC/miniweb/version
+      shell: bash
     - name: Build
+      if: steps.check.outputs.skip-release != 'true'
       run: |
         call wdk\startddk /x86 /win7
         cd miniweb-src
         nmake /f Makefile.vc
       shell: cmd
     - name: Upload files
+      if: steps.check.outputs.skip-release != 'true'
       uses: actions/upload-artifact@v3
       with:
         name: miniweb
@@ -45,3 +88,16 @@ jobs:
           miniweb-src/bin/miniweb.pdb
           miniweb-src/bin/htdocs/
         if-no-files-found: error
+    - name: Zip
+      if: steps.check.outputs.skip-release != 'true'
+      run: |
+        cd miniweb-src/bin
+        7z a -tzip -mx=7 -mtp=2 "../../${{ runner.os }}-${{ env.miniweb-tag }}.zip" miniweb.exe miniweb.pdb htdocs/
+      shell: bash
+    - name: Release
+      if: steps.check.outputs.skip-release != 'true'
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ env.miniweb-tag }}
+        prerelease: true
+        files: ${{ runner.os }}-${{ env.miniweb-tag }}.zip
