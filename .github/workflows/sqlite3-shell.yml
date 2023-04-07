@@ -1,6 +1,13 @@
 name: Build SQLite3 shell
 on:
-  workflow_call:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - '.github/workflows/sqlite3-shell.yml'
+      - 'sqlite3-shell/**'
+  schedule:
+    - cron: "3 3 * * *"
 
 jobs:
   setup:
@@ -11,25 +18,65 @@ jobs:
     env:
       WINDDKROOT: ${{ needs.setup.outputs.winddkroot }}
     steps:
+    - name: Get the latest URL
+      run: |
+        line=$(curl -s#L https://sqlite.org/download.html | grep PRODUCT,.*/sqlite-amalgamation-)
+        ver=$(echo "$line" | cut -d, -f2)
+        url="$(echo "$line" | cut -d, -f3)"
+        tag=sqlite3-v${ver}
+        if [[ ! "$url" =~ ^[0-9]+/sqlite-amalgamation-[0-9]+\.zip$ ]]; then echo "Unknown URL $url"; exit 1; fi
+        echo "sqlite3-ver=$ver" >> $GITHUB_ENV
+        echo "sqlite3-url=$url" >> $GITHUB_ENV
+        echo "sqlite3-tag=$tag" >> $GITHUB_ENV
+      shell: bash
+    - name: Restore last build info
+      uses: actions/cache@v3
+      with:
+        path: C:\TEMP\GAC\sqlite3
+        key: ${{ runner.os }}--sqlite3-shell
+    - name: Check last build info
+      id: check
+      run: |
+        tag_file=/c/TEMP/GAC/sqlite3/tag
+        last_tag=$(cat "$tag_file" 2>/dev/null || echo -n)
+        if [[ "$last_tag" != "${{ env.sqlite3-ver }}" ]]; then
+          mkdir -p "${tag_file%/*}"
+          echo "${{ env.sqlite3-ver }}" > "$tag_file"
+        else
+          echo 'skip-release=true' >> "$GITHUB_OUTPUT"
+        fi
+      shell: bash
     - uses: actions/checkout@v3
+      if: steps.check.outputs.skip-release != 'true'
     - uses: actions/cache@v3
       name: Extract WDK
+      if: steps.check.outputs.skip-release != 'true'
       with:
         path: ${{ needs.setup.outputs.winddkroot }}
         key: ${{ runner.os }}-wdk-7600.16385.1
         fail-on-cache-miss: true
     - name: Download source code
+      if: steps.check.outputs.skip-release != 'true'
       run: |
-        url="$(curl -s#L https://sqlite.org/download.html | grep PRODUCT,.*/sqlite-amalgamation- | cut -d, -f3)"
-        if [[ ! "$url" =~ ^[0-9]+/sqlite-amalgamation-[0-9]+\.zip$ ]]; then echo "Unknown URL $url"; exit 1; fi
-        echo "Downloading $url"
-        curl -# "https://sqlite.org/$url" -o sqlite-amalgamation.zip
-        unzip sqlite-amalgamation.zip -dsqlite-tmp
-        mkdir sqlite-src
-        for f in 'sqlite-tmp/*'; do mv $f/* sqlite-src/; done
-        patch -ui sqlite3-shell/unicode-support-on-windows.patch sqlite-src/shell.c
+          url=https://sqlite.org/${{ env.sqlite3-url }}
+          echo "Downloading $url"
+          curl -# "$url" -o sqlite-amalgamation.zip
+          unzip sqlite-amalgamation.zip -dsqlite-tmp
+          mkdir sqlite-src
+          for f in 'sqlite-tmp/*'; do mv $f/* sqlite-src/; done
+          patch -ui sqlite3-shell/unicode-support-on-windows.patch sqlite-src/shell.c
+      shell: bash
+    - name: Tag version
+      if: steps.check.outputs.skip-release != 'true'
+      run: |
+        tag=${{ env.sqlite3-tag }}
+        git config user.name "${GITHUB_ACTOR}"
+        git config user.email "${GITHUB_ACTOR_ID}+${GITHUB_ACTOR}@users.noreply.github.com"
+        git tag -a "$tag" -m "patched upstream ${{ env.sqlite3-ver }}"
+        git push origin "$tag" -f
       shell: bash
     - name: Build
+      if: steps.check.outputs.skip-release != 'true'
       env:
         WINDDKROOT: ${{ needs.setup.outputs.winddkroot }}
       run: |
@@ -38,10 +85,25 @@ jobs:
         cl /nologo /W3 /O2 /MD /EHs-c- /GR- /GS /GL /GF /Gy /Zi shell.c sqlite3.c /D "localtime_s=_localtime64_s" /link /nologo /time /out:sqlite3.exe /map:sqlite3.map /dynamicbase:no /nxcompat /ltcg /opt:icf /opt:ref /pdbaltpath:"%%_PDB%%"
       shell: cmd
     - name: Upload files
+      if: steps.check.outputs.skip-release != 'true'
       uses: actions/upload-artifact@v3
       with:
-        name: sqlite3
+        name: sqlite3-${{ env.sqlite3-ver }}
         path: |
           sqlite-src/sqlite3.exe
           sqlite-src/sqlite3.pdb
+          sqlite-src/sqlite3.map
         if-no-files-found: error
+    - name: Zip
+      if: steps.check.outputs.skip-release != 'true'
+      run: |
+        cd sqlite-src
+        7z a -tzip -mx=7 -mtp=2 "../${{ runner.os }}-${{ env.sqlite3-tag }}.zip" sqlite3.exe sqlite3.pdb
+      shell: bash
+    - name: Release
+      if: steps.check.outputs.skip-release != 'true'
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ env.sqlite3-tag }}
+        prerelease: true
+        files: ${{ runner.os }}-${{ env.sqlite3-tag }}.zip

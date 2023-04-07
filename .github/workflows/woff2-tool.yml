@@ -1,13 +1,45 @@
 name: Build woff2 tool
 on:
-  workflow_call:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - '.github/workflows/woff2-tool.yml'
+      - 'woff2/**'
+  schedule:
+    - cron: "2 2 2 * *"
 
 jobs:
   build:
     runs-on: windows-latest
     steps:
+    - name: Get the latest commit
+      run: |
+        rev=$(git ls-remote -h https://github.com/google/woff2.git master | cut -f 1)
+        echo "woff2-rev=$rev" >> $GITHUB_ENV
+        echo "woff2-tag=woff2-${rev:0:7}" >> $GITHUB_ENV
+      shell: bash
+    - name: Restore last build info
+      uses: actions/cache@v3
+      with:
+        path: C:\TEMP\GAC\woff2
+        key: ${{ runner.os }}--woff2
+    - name: Check last build info
+      id: check
+      run: |
+        tag_file=/c/TEMP/GAC/woff2/tag
+        last_tag=$(cat "$tag_file" 2>/dev/null || echo -n)
+        if [[ "$last_tag" != "${{ env.woff2-rev }}" ]]; then
+          mkdir -p "${tag_file%/*}"
+          echo "${{ env.woff2-rev }}" > "$tag_file"
+        else
+          echo 'skip-release=true' >> "$GITHUB_OUTPUT"
+        fi
+      shell: bash
     - uses: actions/checkout@v3
+      if: steps.check.outputs.skip-release != 'true'
     - uses: msys2/setup-msys2@v2
+      if: steps.check.outputs.skip-release != 'true'
       with:
         msystem: mingw32
         install: >-
@@ -15,6 +47,7 @@ jobs:
           gcc
       id: setup
     - name: Download source code
+      if: steps.check.outputs.skip-release != 'true'
       run: |
         git clone https://github.com/google/woff2.git woff2-src
         cd woff2-src
@@ -23,7 +56,17 @@ jobs:
         git config user.email nobody@localhost
         git config user.name nobody
         git am -3 --ignore-whitespace ../woff2/make-a-single-program.patch
+    - name: Tag version
+      if: steps.check.outputs.skip-release != 'true'
+      run: |
+        tag=${{ env.woff2-tag }}
+        git config user.name "${GITHUB_ACTOR}"
+        git config user.email "${GITHUB_ACTOR_ID}+${GITHUB_ACTOR}@users.noreply.github.com"
+        git tag -a "$tag" -m "patched upstream ${{ env.woff2-rev }}"
+        git push origin "$tag" -f
+      shell: bash
     - name: Build
+      if: steps.check.outputs.skip-release != 'true'
       run: |
         cd woff2-src/brotli
         make lib
@@ -32,8 +75,22 @@ jobs:
         strip woff2.exe
       shell: msys2 {0}
     - name: Upload files
+      if: steps.check.outputs.skip-release != 'true'
       uses: actions/upload-artifact@v3
       with:
         name: woff2
         path: |
           woff2-src/woff2.exe
+    - name: Zip
+      if: steps.check.outputs.skip-release != 'true'
+      run: |
+        cd woff2-src
+        7z a -tzip -mx=7 -mtp=2 "../${{ runner.os }}-${{ env.woff2-tag }}.zip" woff2.exe
+      shell: bash
+    - name: Release
+      if: steps.check.outputs.skip-release != 'true'
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ env.woff2-tag }}
+        prerelease: true
+        files: ${{ runner.os }}-${{ env.woff2-tag }}.zip
