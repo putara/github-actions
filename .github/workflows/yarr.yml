@@ -1,0 +1,66 @@
+name: Build yarr
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - '.github/workflows/yarr.yml'
+  schedule:
+    - cron: "4 4 * * 4"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the latest commit
+        run: |
+          rev=$(git ls-remote -h https://github.com/nkanaev/yarr.git master | cut -f 1)
+          echo "yarr-rev=$rev" >> $GITHUB_ENV
+          echo "yarr-tag=yarr-${rev:0:7}" >> $GITHUB_ENV
+      - name: Restore last build info
+        uses: actions/cache@v3
+        with:
+          path: /tmp/GAC/yarr
+          key: ${{ runner.os }}--yarr
+      - name: Check last build info
+        id: check
+        run: |
+          tag_file=/tmp/GAC/yarr/tag
+          last_tag=$(cat "$tag_file" 2>/dev/null || echo -n)
+          if [[ "$last_tag" != "${{ env.yarr-rev }}" ]]; then
+            mkdir -p "${tag_file%/*}"
+            echo "${{ env.yarr-rev }}" > "$tag_file"
+          else
+            echo 'skip-release=true' >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v3
+        if: steps.check.outputs.skip-release != 'true'
+      - name: Download source code
+        if: steps.check.outputs.skip-release != 'true'
+        run: |
+          git clone https://github.com/nkanaev/yarr.git yarr-src
+      - name: Tag version
+        if: steps.check.outputs.skip-release != 'true'
+        run: |
+          cd yarr-src
+          tag=$(git rev-parse HEAD)
+          echo "$tag"
+          mkdir -p /tmp/GAC/yarr && echo "$tag" > /tmp/GAC/yarr/version
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        if: steps.check.outputs.skip-release != 'true'
+      - name: Login to Quay.io
+        uses: docker/login-action@v2
+        if: steps.check.outputs.skip-release != 'true'
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_PASSWORD }}
+      - name: Build and push
+        uses: docker/build-push-action@v4
+        if: steps.check.outputs.skip-release != 'true'
+        with:
+          context: ./yarr-src
+          file: ./yarr-src/dockerfile
+          push: true
+          tags: quay.io/putara/yarr:alpine
