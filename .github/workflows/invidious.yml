@@ -1,0 +1,102 @@
+name: Build invidious
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - '.github/workflows/invidious.yml'
+      - 'invidious/**'
+  schedule:
+    - cron: "5 5 * * 5"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the latest commit
+        run: |
+          rev=$(git ls-remote -h https://github.com/iv-org/invidious.git master | cut -f 1)
+          echo "invidious-rev=$rev" >> $GITHUB_ENV
+          echo "invidious-tag=invidious-${rev:0:7}" >> $GITHUB_ENV
+          echo "invidious-timestamp=$(date +%Y%m%d)" >> $GITHUB_ENV
+      - name: Restore last build info
+        if: github.ref_name == 'main' && github.event_name == 'schedule'
+        uses: actions/cache@v3
+        with:
+          path: /tmp/GAC/invidious
+          key: ${{ runner.os }}--invidious
+      - name: Check last build info
+        id: check
+        run: |
+          tag_file=/tmp/GAC/invidious/tag
+          last_tag=$(cat "$tag_file" 2>/dev/null || echo -n)
+          if [[ "$last_tag" != "${{ env.invidious-rev }}" ]]; then
+            mkdir -p "${tag_file%/*}"
+            echo "${{ env.invidious-rev }}" > "$tag_file"
+          else
+            echo 'skip-release=true' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+        if: steps.check.outputs.skip-release != 'true'
+        with:
+          platforms: arm64
+      - uses: actions/checkout@v3
+        if: steps.check.outputs.skip-release != 'true'
+      - name: Download source code
+        if: steps.check.outputs.skip-release != 'true'
+        run: |
+          git clone https://github.com/iv-org/invidious.git invidious-src
+          cd invidious-src
+          git config --add remote.origin.fetch '+refs/pull/*/head:refs/remotes/origin/pr/*'
+          git fetch --all
+      - name: Tag version
+        if: steps.check.outputs.skip-release != 'true'
+        run: |
+          cd invidious-src
+          tag=$(git rev-parse HEAD)
+          echo "$tag"
+          mkdir -p /tmp/GAC/invidious && echo "$tag" > /tmp/GAC/invidious/version
+      - name: Merge patches
+        if: steps.check.outputs.skip-release != 'true'
+        run: |
+          cd invidious-src
+          git config user.email nobody@localhost
+          git config user.name nobody
+          for i in $(grep -E -v '^#' ../invidious/pr.list); do git merge --no-edit "origin/pr/$i"; done
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        if: steps.check.outputs.skip-release != 'true'
+      - name: Login to Quay.io
+        uses: docker/login-action@v2
+        if: steps.check.outputs.skip-release != 'true'
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_PASSWORD }}
+      - name: Build and push AMD64
+        uses: docker/build-push-action@v4
+        if: steps.check.outputs.skip-release != 'true'
+        with:
+          context: ./invidious-src
+          file: ./invidious-src/docker/Dockerfile
+          platforms: linux/amd64
+          labels: quay.expires-after=5w
+          push: true
+          tags: quay.io/putara/invidious:latest, quay.io/putara/invidious:amd64-${{ env.invidious-timestamp }}
+          build-args: |
+            "release=1"
+            "disable_quic=1"
+      - name: Build and push ARM64
+        uses: docker/build-push-action@v4
+        if: steps.check.outputs.skip-release != 'true'
+        with:
+          context: ./invidious-src
+          file: ./invidious-src/docker/Dockerfile.arm64
+          platforms: linux/arm64/v8
+          labels: quay.expires-after=5w
+          push: true
+          tags: quay.io/putara/invidious:latest-arm64, quay.io/putara/invidious:arm64-${{ env.invidious-timestamp }}
+          build-args: |
+            "release=1"
+            "disable_quic=1"
