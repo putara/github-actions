@@ -20,7 +20,7 @@ jobs:
     steps:
     - name: Get the latest URL
       run: |
-        line=$(curl -s#L https://sqlite.org/download.html | grep PRODUCT,.*/sqlite-amalgamation-)
+        line=$(curl -s#L https://sqlite.org/download.html | grep -E 'PRODUCT,.*/sqlite-amalgamation-')
         ver=$(echo "$line" | cut -d, -f2)
         url="$(echo "$line" | cut -d, -f3)"
         tag=sqlite3-v${ver}
