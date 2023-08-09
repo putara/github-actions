@@ -1,1 +1,2 @@
-https://raw.githubusercontent.com/yewtudotbe/invidious-custom/master/patches/010-use-redis-for-video-cache.patch
+# https://raw.githubusercontent.com/yewtudotbe/invidious-custom/master/patches/010-use-redis-for-video-cache.patch
+https://raw.githubusercontent.com/putara/github-actions/main/invidious/patches/0001-use-redis-for-video-cache.patch
