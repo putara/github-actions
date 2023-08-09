@@ -1,0 +1,18 @@
+FROM golang:alpine AS build
+RUN apk add build-base git
+WORKDIR /src
+COPY . .
+
+RUN mkdir -p _output/linux && \
+    GOOS=linux GOARCH=arm64 go build \
+      -tags "sqlite_foreign_keys release linux" \
+      -ldflags="-s -w -X 'main.Version=$(head -1 makefile | cut -f2 -d=)' -X 'main.GitHash=$(git rev-parse --short=8 HEAD)'" \
+      -p 4 \
+      -o _output/linux/yarr src/main.go
+
+FROM alpine:latest
+RUN apk add --no-cache ca-certificates && \
+    update-ca-certificates
+COPY --from=build /src/_output/linux/yarr /usr/local/bin/yarr
+EXPOSE 7070
+CMD ["/usr/local/bin/yarr", "-addr", "0.0.0.0:7070", "-db", "/data/yarr.db"]

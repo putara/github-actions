@@ -56,7 +56,7 @@ jobs:
           registry: quay.io
           username: ${{ secrets.QUAY_USERNAME }}
           password: ${{ secrets.QUAY_PASSWORD }}
-      - name: Build and push
+      - name: Build and push AMD64
         uses: docker/build-push-action@v4
         if: steps.check.outputs.skip-release != 'true'
         with:
@@ -64,3 +64,12 @@ jobs:
           file: ./yarr-src/dockerfile
           push: true
           tags: quay.io/putara/yarr:alpine
+      - name: Build and push ARM64
+        uses: docker/build-push-action@v4
+        if: steps.check.outputs.skip-release != 'true'
+        with:
+          context: ./yarr-src
+          file: ./yarr/dockerfile.arm64
+          platforms: linux/arm64/v8
+          push: true
+          tags: quay.io/putara/yarr:alpine-arm64
