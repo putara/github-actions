@@ -1,0 +1,25 @@
+From 06aaeaa6b48ca7793a1bb2eb5eedcd656d2d2747 Mon Sep 17 00:00:00 2001
+From: putara <38089082+putara@users.noreply.github.com>
+Date: Mon, 21 Aug 2023 23:34:54 +1200
+Subject: [PATCH] fix
+
+---
+ src/parserutils.nim | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/parserutils.nim b/src/parserutils.nim
+index c65052e..a8bac21 100644
+--- a/src/parserutils.nim
++++ b/src/parserutils.nim
+@@ -36,7 +36,7 @@ template with*(ident, value, body): untyped =
+ template with*(ident; value: JsonNode; body): untyped =
+   if true:
+     let ident {.inject.} = value
+-    if value.notNull: body
++    if value.kind != JNull: body
+ 
+ template getCursor*(js: JsonNode): string =
+   js{"content", "operation", "cursor", "value"}.getStr
+-- 
+2.41.0
+

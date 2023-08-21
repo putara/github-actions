@@ -64,6 +64,7 @@ jobs:
           git config user.email nobody@localhost
           git config user.name nobody
           for i in $(grep -E -v '^#' ../nitter/pr.list); do git merge --no-edit "origin/pr/$i"; done
+          for i in $(grep -E -v '^#' ../nitter/xt.list); do curl -sL "$i" | git am -3; done
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
         if: steps.check.outputs.skip-release != 'true'
