@@ -1,0 +1,96 @@
+name: Build nitter
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - '.github/workflows/nitter.yml'
+      - 'nitter/**'
+  schedule:
+    - cron: "5 5 * * 2,5"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the latest commit
+        run: |
+          rev=$(git ls-remote -h https://github.com/zedeus/nitter.git master | cut -f 1)
+          echo "nitter-rev=$rev" >> $GITHUB_ENV
+          echo "nitter-tag=nitter-${rev:0:7}" >> $GITHUB_ENV
+          echo "nitter-timestamp=$(date +%Y%m%d)" >> $GITHUB_ENV
+      - name: Restore last build info
+        if: github.ref_name == 'main' && github.event_name == 'schedule'
+        uses: actions/cache@v3
+        with:
+          path: /tmp/GAC/nitter
+          key: ${{ runner.os }}--nitter
+      - name: Check last build info
+        id: check
+        run: |
+          tag_file=/tmp/GAC/nitter/tag
+          last_tag=$(cat "$tag_file" 2>/dev/null || echo -n)
+          if [[ "$last_tag" != "${{ env.nitter-rev }}" ]]; then
+            mkdir -p "${tag_file%/*}"
+            echo "${{ env.nitter-rev }}" > "$tag_file"
+          else
+            echo 'skip-release=true' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+        if: steps.check.outputs.skip-release != 'true'
+        with:
+          platforms: arm64
+      - uses: actions/checkout@v3
+        if: steps.check.outputs.skip-release != 'true'
+      - name: Download source code
+        if: steps.check.outputs.skip-release != 'true'
+        run: |
+          git clone https://github.com/zedeus/nitter.git nitter-src
+          cd nitter-src
+          git config --add remote.origin.fetch '+refs/pull/*/head:refs/remotes/origin/pr/*'
+          git fetch --all
+      - name: Tag version
+        if: steps.check.outputs.skip-release != 'true'
+        run: |
+          cd nitter-src
+          tag=$(git rev-parse HEAD)
+          echo "$tag"
+          mkdir -p /tmp/GAC/nitter && echo "$tag" > /tmp/GAC/nitter/version
+      - name: Merge patches
+        if: steps.check.outputs.skip-release != 'true'
+        run: |
+          cd nitter-src
+          git config user.email nobody@localhost
+          git config user.name nobody
+          for i in $(grep -E -v '^#' ../nitter/pr.list); do git merge --no-edit "origin/pr/$i"; done
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        if: steps.check.outputs.skip-release != 'true'
+      - name: Login to Quay.io
+        uses: docker/login-action@v2
+        if: steps.check.outputs.skip-release != 'true'
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_PASSWORD }}
+      - name: Build and push AMD64
+        uses: docker/build-push-action@v4
+        if: steps.check.outputs.skip-release != 'true'
+        with:
+          context: ./nitter-src
+          file: ./nitter-src/Dockerfile
+          platforms: linux/amd64
+          labels: quay.expires-after=5w
+          push: true
+          tags: quay.io/putara/nitter:latest, quay.io/putara/nitter:amd64-${{ env.nitter-timestamp }}
+      - name: Build and push ARM64
+        uses: docker/build-push-action@v4
+        if: steps.check.outputs.skip-release != 'true'
+        with:
+          context: ./nitter-src
+          file: ./nitter-src/Dockerfile.arm64
+          platforms: linux/arm64/v8
+          labels: quay.expires-after=5w
+          push: true
+          tags: quay.io/putara/nitter:latest-arm64, quay.io/putara/nitter:arm64-${{ env.nitter-timestamp }}
