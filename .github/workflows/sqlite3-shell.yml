@@ -1,13 +1,13 @@
 name: Build SQLite3 shell
 on:
   workflow_dispatch:
-  push:
-    branches: ["main"]
-    paths:
-      - '.github/workflows/sqlite3-shell.yml'
-      - 'sqlite3-shell/**'
-  schedule:
-    - cron: "3 3 * * *"
+#  push:
+#    branches: ["main"]
+#    paths:
+#      - '.github/workflows/sqlite3-shell.yml'
+#      - 'sqlite3-shell/**'
+#  schedule:
+#    - cron: "3 3 * * *"
 
 jobs:
   setup:
