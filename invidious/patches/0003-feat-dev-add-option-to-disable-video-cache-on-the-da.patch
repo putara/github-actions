@@ -1,0 +1,40 @@
+From 4571851789676ce470e0a85cdd022a3e7f501212 Mon Sep 17 00:00:00 2001
+From: Fijxu <fijxu@nadeko.net>
+Date: Mon, 24 Feb 2025 13:26:52 -0300
+Subject: [PATCH 3/4] feat(dev): add option to disable video cache on the
+ database (for development purposes only)
+
+---
+ src/invidious/config.cr          | 2 ++
+ src/invidious/database/videos.cr | 2 +-
+ 2 files changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/src/invidious/config.cr b/src/invidious/config.cr
+index 65d73df8..eb504865 100644
+--- a/src/invidious/config.cr
++++ b/src/invidious/config.cr
+@@ -183,6 +183,8 @@ class Config
+   # Playlist length limit
+   property playlist_length_limit : Int32 = 500
+ 
++  property video_cache : Bool = true
++
+   def disabled?(option)
+     case disabled = CONFIG.disable_proxy
+     when Bool
+diff --git a/src/invidious/database/videos.cr b/src/invidious/database/videos.cr
+index 64d18068..e826ae79 100644
+--- a/src/invidious/database/videos.cr
++++ b/src/invidious/database/videos.cr
+@@ -60,7 +60,7 @@ module Invidious::Database::Videos
+   extend self
+ 
+   def insert(video : Video)
+-    DBCache.set(video: video, expire_time: 14400)
++    DBCache.set(video: video, expire_time: 14400) if CONFIG.video_cache
+   end
+ 
+   def delete(id)
+-- 
+2.49.0
+
