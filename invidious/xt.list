@@ -1,8 +1,4 @@
-# https://raw.githubusercontent.com/yewtudotbe/invidious-custom/master/patches/010-use-redis-for-video-cache.patch
-# https://raw.githubusercontent.com/putara/github-actions/main/invidious/patches/0001-use-redis-for-video-cache.patch
-# https://raw.githubusercontent.com/putara/github-actions/main/invidious/patches/0002-apply-patch-found-on-invidious-4975.patch
-
-https://raw.githubusercontent.com/putara/github-actions/main/invidious/patches/0001-use-redis-for-video-cache.patch
-https://raw.githubusercontent.com/putara/github-actions/main/invidious/patches/0002-feat-database-support-for-either-Redis-or-PostgreSQL.patch
-https://raw.githubusercontent.com/putara/github-actions/main/invidious/patches/0003-feat-dev-add-option-to-disable-video-cache-on-the-da.patch
-https://raw.githubusercontent.com/putara/github-actions/main/invidious/patches/0004-feat-Database-Videos-built-in-video-cache-and-suppor.patch
+0001-use-redis-for-video-cache.patch
+0002-feat-database-support-for-either-Redis-or-PostgreSQL.patch
+0003-feat-dev-add-option-to-disable-video-cache-on-the-da.patch
+0004-feat-Database-Videos-built-in-video-cache-and-suppor.patch

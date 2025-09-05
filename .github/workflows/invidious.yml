@@ -2,7 +2,7 @@ name: Build invidious
 on:
   workflow_dispatch:
   push:
-    branches: ["main"]
+    branches: ["main", "dev", "test"]
     paths:
       - '.github/workflows/invidious.yml'
       - 'invidious/**'
@@ -11,7 +11,25 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # amd/arm build inspired by https://github.com/iv-org/invidious/blob/master/.github/workflows/ci.yml
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: AMD64
+            prefix: amd64
+            platform: linux/amd64
+            dockerfile: Dockerfile
+            latest: latest
+          - os: ubuntu-24.04-arm
+            name: ARM64
+            prefix: arm64
+            platform: linux/arm64/v8
+            dockerfile: Dockerfile.arm64
+            latest: latest-arm64
+    name: Build for ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+
     steps:
       - name: Get the latest commit
         run: |
@@ -36,11 +54,16 @@ jobs:
           else
             echo 'skip-release=true' >> "$GITHUB_OUTPUT"
           fi
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
+      - name: Set branch
         if: steps.check.outputs.skip-release != 'true'
-        with:
-          platforms: arm64
+        run: |
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
+            echo "branch=invidious" >> $GITHUB_ENV
+            echo "expires=5w" >> $GITHUB_ENV
+          else
+            echo "branch=test-invidious" >> $GITHUB_ENV
+            echo "expires=3d" >> $GITHUB_ENV
+          fi
       - uses: actions/checkout@v3
         if: steps.check.outputs.skip-release != 'true'
       - name: Download source code
@@ -64,7 +87,7 @@ jobs:
           git config user.email nobody@localhost
           git config user.name nobody
           for i in $(grep -E -v '^#' ../invidious/pr.list); do git merge --no-edit "origin/pr/$i"; done
-          for i in $(grep -E -v '^#' ../invidious/xt.list); do curl -sL "$i" | git am -3; done
+          for i in $(grep -E -v '^#' ../invidious/xt.list); do git am -3 "../invidious/patches/$i"; done
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
         if: steps.check.outputs.skip-release != 'true'
@@ -75,29 +98,16 @@ jobs:
           registry: quay.io
           username: ${{ secrets.QUAY_USERNAME }}
           password: ${{ secrets.QUAY_PASSWORD }}
-      - name: Build and push AMD64
+      - name: Build and push ${{ matrix.name }}
         uses: docker/build-push-action@v4
         if: steps.check.outputs.skip-release != 'true'
         with:
           context: ./invidious-src
-          file: ./invidious-src/docker/Dockerfile
-          platforms: linux/amd64
-          labels: quay.expires-after=5w
+          file: ./invidious-src/docker/${{ matrix.dockerfile }}
+          platforms: ${{ matrix.platform }}
+          labels: quay.expires-after=${{ env.expires }}
           push: true
-          tags: quay.io/putara/invidious:latest, quay.io/putara/invidious:amd64-${{ env.invidious-timestamp }}
-          build-args: |
-            "release=1"
-            "disable_quic=1"
-      - name: Build and push ARM64
-        uses: docker/build-push-action@v4
-        if: steps.check.outputs.skip-release != 'true'
-        with:
-          context: ./invidious-src
-          file: ./invidious-src/docker/Dockerfile.arm64
-          platforms: linux/arm64/v8
-          labels: quay.expires-after=5w
-          push: true
-          tags: quay.io/putara/invidious:latest-arm64, quay.io/putara/invidious:arm64-${{ env.invidious-timestamp }}
+          tags: quay.io/putara/${{ env.branch }}:${{ matrix.latest }}, quay.io/putara/${{ env.branch }}:${{ matrix.prefix }}-${{ env.invidious-timestamp }}
           build-args: |
             "release=1"
             "disable_quic=1"
