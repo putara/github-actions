@@ -1,22 +1,23 @@
-From a20517f09ac1432b465185b73bafb9fc69d1b225 Mon Sep 17 00:00:00 2001
+From 4760e9669eb57fc2755abb3667baa2282500aabe Mon Sep 17 00:00:00 2001
 From: Fijxu <fijxu@nadeko.net>
 Date: Tue, 18 Feb 2025 18:11:05 -0300
 Subject: [PATCH 2/4] feat(database): support for either Redis or PostgreSQL
  for video cache
 
 ---
- src/invidious.cr                 | 18 +++++--
+ src/invidious.cr                 | 19 ++++---
  src/invidious/database/videos.cr | 88 +++++++++++++++++++++-----------
- 2 files changed, 72 insertions(+), 34 deletions(-)
+ 2 files changed, 72 insertions(+), 35 deletions(-)
 
 diff --git a/src/invidious.cr b/src/invidious.cr
-index 0bb2df7b..4bd9af60 100644
+index bc65a8b9..a18cea7d 100644
 --- a/src/invidious.cr
 +++ b/src/invidious.cr
-@@ -63,11 +63,6 @@ CONFIG   = Config.load
- HMAC_KEY = CONFIG.hmac_key
- 
- PG_DB    = DB.open CONFIG.database_url
+@@ -68,12 +68,6 @@ rescue ex
+   puts "Check your 'config.yml' database settings or PostgreSQL settings."
+   exit(1)
+ end
+-
 -REDIS_DB = Redis::PooledClient.new(unixsocket: CONFIG.redis_socket || nil, url: CONFIG.redis_url || nil)
 -
 -if REDIS_DB.ping
@@ -25,7 +26,7 @@ index 0bb2df7b..4bd9af60 100644
  ARCHIVE_URL = URI.parse("https://archive.org")
  PUBSUB_URL  = URI.parse("https://pubsubhubbub.appspot.com")
  REDDIT_URL  = URI.parse("https://www.reddit.com")
-@@ -145,6 +140,19 @@ end
+@@ -151,6 +145,19 @@ end
  OUTPUT = CONFIG.output.upcase == "STDOUT" ? STDOUT : File.open(CONFIG.output, mode: "a")
  LOGGER = Invidious::LogHandler.new(OUTPUT, CONFIG.log_level, CONFIG.colorize_logs)
  
@@ -157,5 +158,5 @@ index 776ef5b1..64d18068 100644
    end
  end
 -- 
-2.49.0
+2.51.0
 

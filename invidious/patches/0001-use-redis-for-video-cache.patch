@@ -1,4 +1,4 @@
-From 4a70275cf16dda3cd2aed1f19add403cf78c0b4b Mon Sep 17 00:00:00 2001
+From 128e7b6ba331a72f8c23d50f583c57672febc0df Mon Sep 17 00:00:00 2001
 From: Emilien Devos <contact@emiliendevos.be>
 Date: Sat, 10 Jun 2023 22:21:38 +0200
 Subject: [PATCH 1/4] use redis for video cache
@@ -7,17 +7,17 @@ Signed-off-by: zzls Selfhost <root@selfhost.zzls.xyz>
 ---
  shard.lock                       |  8 ++++++++
  shard.yml                        |  2 ++
- src/invidious.cr                 |  8 +++++++-
+ src/invidious.cr                 |  7 +++++++
  src/invidious/config.cr          |  2 ++
  src/invidious/database/videos.cr | 16 +++++++++++++---
  src/invidious/videos.cr          |  2 +-
- 6 files changed, 33 insertions(+), 5 deletions(-)
+ 6 files changed, 33 insertions(+), 4 deletions(-)
 
 diff --git a/shard.lock b/shard.lock
-index a097b081..53c223ed 100644
+index 1265eda6..c210a465 100644
 --- a/shard.lock
 +++ b/shard.lock
-@@ -36,6 +36,10 @@ shards:
+@@ -32,6 +32,10 @@ shards:
      git: https://github.com/will/crystal-pg.git
      version: 0.28.0
  
@@ -28,7 +28,7 @@ index a097b081..53c223ed 100644
    protodec:
      git: https://github.com/iv-org/protodec.git
      version: 0.1.5
-@@ -44,6 +48,10 @@ shards:
+@@ -40,6 +44,10 @@ shards:
      git: https://github.com/luislavena/radix.git
      version: 0.4.1
  
@@ -40,10 +40,10 @@ index a097b081..53c223ed 100644
      git: https://github.com/icy-arctic-fox/spectator.git
      version: 0.10.6
 diff --git a/shard.yml b/shard.yml
-index de2b99e4..dd1b4e67 100644
+index 839ebca5..288fbf49 100644
 --- a/shard.yml
 +++ b/shard.yml
-@@ -30,6 +30,8 @@ dependencies:
+@@ -27,6 +27,8 @@ dependencies:
    http_proxy:
      github: mamantoha/http_proxy
      version: ~> 0.10.3
@@ -53,10 +53,10 @@ index de2b99e4..dd1b4e67 100644
  development_dependencies:
    spectator:
 diff --git a/src/invidious.cr b/src/invidious.cr
-index 9e3607a2..0bb2df7b 100644
+index 5ee165d0..bc65a8b9 100644
 --- a/src/invidious.cr
 +++ b/src/invidious.cr
-@@ -32,6 +32,7 @@ require "xml"
+@@ -30,6 +30,7 @@ require "xml"
  require "yaml"
  require "compress/zip"
  require "protodec/utils"
@@ -64,12 +64,11 @@ index 9e3607a2..0bb2df7b 100644
  
  require "./invidious/database/*"
  require "./invidious/database/migrations/*"
-@@ -61,7 +62,12 @@ alias IV = Invidious
- CONFIG   = Config.load
- HMAC_KEY = CONFIG.hmac_key
- 
--PG_DB       = DB.open CONFIG.database_url
-+PG_DB    = DB.open CONFIG.database_url
+@@ -67,6 +68,12 @@ rescue ex
+   puts "Check your 'config.yml' database settings or PostgreSQL settings."
+   exit(1)
+ end
++
 +REDIS_DB = Redis::PooledClient.new(unixsocket: CONFIG.redis_socket || nil, url: CONFIG.redis_url || nil)
 +
 +if REDIS_DB.ping
@@ -145,5 +144,5 @@ index 348a0a66..4936c63e 100644
          Invidious::Database::Videos.delete(id)
          raise ex
 -- 
-2.49.0
+2.51.0
 
