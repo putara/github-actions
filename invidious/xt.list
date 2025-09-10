@@ -2,3 +2,4 @@
 0002-feat-database-support-for-either-Redis-or-PostgreSQL.patch
 0003-feat-dev-add-option-to-disable-video-cache-on-the-da.patch
 0004-feat-Database-Videos-built-in-video-cache-and-suppor.patch
+Stop-using-the-companion-s-latest_version-endpoint.patch
