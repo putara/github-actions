@@ -2,7 +2,7 @@ name: Build nitter
 on:
   workflow_dispatch:
   push:
-    branches: ["main"]
+    branches: ["main", "dev", "test"]
     paths:
       - '.github/workflows/nitter.yml'
       - 'nitter/**'
@@ -10,15 +10,45 @@ on:
     - cron: "5 5 * * 2,5"
 
 jobs:
-  build:
+  prep:
+    outputs:
+      nitter-rev: ${{ steps.latest.outputs.nitter-rev }}
+      nitter-timestamp: ${{ steps.latest.outputs.nitter-timestamp }}
+    name: Preparation
     runs-on: ubuntu-latest
+
     steps:
       - name: Get the latest commit
+        id: latest
         run: |
           rev=$(git ls-remote -h https://github.com/zedeus/nitter.git master | cut -f 1)
-          echo "nitter-rev=$rev" >> $GITHUB_ENV
-          echo "nitter-tag=nitter-${rev:0:7}" >> $GITHUB_ENV
-          echo "nitter-timestamp=$(date +%Y%m%d)" >> $GITHUB_ENV
+          echo "nitter-rev=$rev" >> "$GITHUB_OUTPUT"
+          echo "nitter-timestamp=$(TZ=Pacific/Auckland date +%Y%m%d)" >> "$GITHUB_OUTPUT"
+
+  build:
+    # amd/arm build inspired by https://github.com/iv-org/invidious/blob/master/.github/workflows/ci.yml
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: AMD64
+            prefix: amd64
+            platform: linux/amd64
+            dockerfile: Dockerfile
+            latest: latest
+          - os: ubuntu-24.04-arm
+            name: ARM64
+            prefix: arm64
+            platform: linux/arm64/v8
+            dockerfile: Dockerfile.arm64
+            latest: latest-arm64
+    name: Build for ${{ matrix.name }}
+    needs: prep
+    env:
+      NITTER_REV: ${{ needs.prep.outputs.nitter-rev }}
+    runs-on: ${{ matrix.os }}
+
+    steps:
       - name: Restore last build info
         if: github.ref_name == 'main' && github.event_name == 'schedule'
         uses: actions/cache@v3
@@ -30,41 +60,56 @@ jobs:
         run: |
           tag_file=/tmp/GAC/nitter/tag
           last_tag=$(cat "$tag_file" 2>/dev/null || echo -n)
-          if [[ "$last_tag" != "${{ env.nitter-rev }}" ]]; then
+          if [[ "$last_tag" != "$NITTER_REV" ]]; then
             mkdir -p "${tag_file%/*}"
-            echo "${{ env.nitter-rev }}" > "$tag_file"
+            echo "$NITTER_REV" > "$tag_file"
           else
             echo 'skip-release=true' >> "$GITHUB_OUTPUT"
           fi
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
+      - name: Set branch
         if: steps.check.outputs.skip-release != 'true'
-        with:
-          platforms: arm64
-      - uses: actions/checkout@v3
+        run: |
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
+            echo "branch=nitter" >> $GITHUB_ENV
+            echo "expires=5w" >> $GITHUB_ENV
+          else
+            echo "branch=test-nitter" >> $GITHUB_ENV
+            echo "expires=3d" >> $GITHUB_ENV
+          fi
+      - name: Checkout
+        uses: actions/checkout@v3
         if: steps.check.outputs.skip-release != 'true'
       - name: Download source code
         if: steps.check.outputs.skip-release != 'true'
         run: |
+          git config --global advice.detachedHead false
+          git config --global user.email nobody@localhost
+          git config --global user.name nobody
+          echo "::group::Clone repo"
           git clone https://github.com/zedeus/nitter.git nitter-src
           cd nitter-src
           git config --add remote.origin.fetch '+refs/pull/*/head:refs/remotes/origin/pr/*'
           git fetch --all
-      - name: Tag version
-        if: steps.check.outputs.skip-release != 'true'
-        run: |
-          cd nitter-src
+          echo "::endgroup::"
+          echo "::group::Tag version"
           tag=$(git rev-parse HEAD)
           echo "$tag"
           mkdir -p /tmp/GAC/nitter && echo "$tag" > /tmp/GAC/nitter/version
+          echo "::endgroup::"
       - name: Merge patches
         if: steps.check.outputs.skip-release != 'true'
         run: |
           cd nitter-src
-          git config user.email nobody@localhost
-          git config user.name nobody
-          for i in $(grep -E -v '^#' ../nitter/pr.list); do git merge --no-edit "origin/pr/$i"; done
-          for i in $(grep -E -v '^#' ../nitter/xt.list); do curl -sL "$i" | git am -3; done
+          for i in $(grep -vE '^#' ../nitter/pr.list); do
+            echo "::group::PR#$i"
+            git merge --no-edit "origin/pr/$i"
+            echo "::endgroup::"
+          done
+          for i in $(grep -vE '^#' ../nitter/xt.list); do
+            echo "::group::$i"
+            git am -3 "../nitter/patches/$i"
+            echo "::endgroup::"
+          done
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
         if: steps.check.outputs.skip-release != 'true'
@@ -75,23 +120,13 @@ jobs:
           registry: quay.io
           username: ${{ secrets.QUAY_USERNAME }}
           password: ${{ secrets.QUAY_PASSWORD }}
-      - name: Build and push AMD64
+      - name: Build and push ${{ matrix.name }}
         uses: docker/build-push-action@v4
         if: steps.check.outputs.skip-release != 'true'
         with:
           context: ./nitter-src
-          file: ./nitter-src/Dockerfile
-          platforms: linux/amd64
-          labels: quay.expires-after=5w
+          file: ./nitter-src/${{ matrix.dockerfile }}
+          platforms: ${{ matrix.platform }}
+          labels: quay.expires-after=${{ env.expires }}
           push: true
-          tags: quay.io/putara/nitter:latest, quay.io/putara/nitter:amd64-${{ env.nitter-timestamp }}
-      - name: Build and push ARM64
-        uses: docker/build-push-action@v4
-        if: steps.check.outputs.skip-release != 'true'
-        with:
-          context: ./nitter-src
-          file: ./nitter-src/Dockerfile.arm64
-          platforms: linux/arm64/v8
-          labels: quay.expires-after=5w
-          push: true
-          tags: quay.io/putara/nitter:latest-arm64, quay.io/putara/nitter:arm64-${{ env.nitter-timestamp }}
+          tags: quay.io/putara/${{ env.branch }}:${{ matrix.latest }}, quay.io/putara/${{ env.branch }}:${{ matrix.prefix }}-${{ needs.prep.outputs.nitter-timestamp }}
