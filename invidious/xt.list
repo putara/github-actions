@@ -3,4 +3,5 @@
 0003-feat-dev-add-option-to-disable-video-cache-on-the-da.patch
 0004-feat-Database-Videos-built-in-video-cache-and-suppor.patch
 0005-feat-add-option-to-force-proxying-of-videos.patch
+0006-feat-Add-configurable-max_request_line_size.patch
 Stop-using-the-companion-s-latest_version-endpoint.patch
