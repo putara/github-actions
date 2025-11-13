@@ -1,4 +1,4 @@
-From c54c6a9dfa663e4b460930f6978bca1d5d038114 Mon Sep 17 00:00:00 2001
+From 64e4364d5bb03d1bcbbf018911ea0b52e205b52e Mon Sep 17 00:00:00 2001
 From: putara <38089082+putara@users.noreply.github.com>
 Date: Mon, 6 Oct 2025 00:44:36 +1300
 Subject: [PATCH] Allow http instead of https for local use
@@ -8,7 +8,7 @@ Subject: [PATCH] Allow http instead of https for local use
  1 file changed, 13 insertions(+), 13 deletions(-)
 
 diff --git a/src/formatters.nim b/src/formatters.nim
-index 7428814..52538f9 100644
+index 7428814..b99f520 100644
 --- a/src/formatters.nim
 +++ b/src/formatters.nim
 @@ -9,15 +9,15 @@ const
@@ -16,19 +16,19 @@ index 7428814..52538f9 100644
  
  let
 -  twRegex = re"(?<=(?<!\S)https:\/\/|(?<=\s))(www\.|mobile\.)?twitter\.com"
-+  twRegex = re"((?<!\S)https?:\/\/|(?<=\s))(www\.|mobile\.)?twitter\.com"
++  twRegex = re"(https?:\/\/|(?<=\s))(www\.|mobile\.)?twitter\.com"
    twLinkRegex = re"""<a href="https:\/\/twitter.com([^"]+)">twitter\.com(\S+)</a>"""
 -  xRegex = re"(?<=(?<!\S)https:\/\/|(?<=\s))(www\.|mobile\.)?x\.com"
-+  xRegex = re"((?<!\S)https?:\/\/|(?<=\s))(www\.|mobile\.)?x\.com"
++  xRegex = re"(https?:\/\/|(?<=\s))(www\.|mobile\.)?x\.com"
    xLinkRegex = re"""<a href="https:\/\/x.com([^"]+)">x\.com(\S+)</a>"""
  
 -  ytRegex = re(r"([A-z.]+\.)?youtu(be\.com|\.be)", {reStudy, reIgnoreCase})
-+  ytRegex = re(r"((?<!\S)https?:\/\/|(?<=\s))([A-z.]+\.)?youtu(be\.com|\.be)", {reStudy, reIgnoreCase})
++  ytRegex = re(r"(https?:\/\/|(?<=\s))([A-z.]+\.)?youtu(be\.com|\.be)", {reStudy, reIgnoreCase})
  
 -  rdRegex = re"(?<![.b])((www|np|new|amp|old)\.)?reddit.com"
 -  rdShortRegex = re"(?<![.b])redd\.it\/"
-+  rdRegex = re"((?<!\S)https?:\/\/|(?<=\s))(?<![.b])((www|np|new|amp|old)\.)?reddit.com"
-+  rdShortRegex = re"((?<!\S)https?:\/\/|(?<=\s))(?<![.b])redd\.it\/"
++  rdRegex = re"(https?:\/\/|(?<=\s))(?<![.b])((www|np|new|amp|old)\.)?reddit.com"
++  rdShortRegex = re"(https?:\/\/|(?<=\s))(?<![.b])redd\.it\/"
    # Videos cannot be supported uniformly between Teddit and Libreddit,
    # so v.redd.it links will not be replaced.
    # Images aren't supported due to errors from Teddit when the image
