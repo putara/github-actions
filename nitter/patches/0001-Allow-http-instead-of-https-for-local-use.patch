@@ -1,18 +1,18 @@
-From 64e4364d5bb03d1bcbbf018911ea0b52e205b52e Mon Sep 17 00:00:00 2001
+From 0299d58eb13373432120a388da876d79834482d0 Mon Sep 17 00:00:00 2001
 From: putara <38089082+putara@users.noreply.github.com>
 Date: Mon, 6 Oct 2025 00:44:36 +1300
-Subject: [PATCH] Allow http instead of https for local use
+Subject: [PATCH 1/2] Allow http instead of https for local use
 
 ---
  src/formatters.nim | 26 +++++++++++++-------------
  1 file changed, 13 insertions(+), 13 deletions(-)
 
 diff --git a/src/formatters.nim b/src/formatters.nim
-index 7428814..b99f520 100644
+index fc0e197..e1e0d99 100644
 --- a/src/formatters.nim
 +++ b/src/formatters.nim
 @@ -9,15 +9,15 @@ const
-   twitter = parseUri("https://twitter.com")
+   twitter = parseUri("https://x.com")
  
  let
 -  twRegex = re"(?<=(?<!\S)https:\/\/|(?<=\s))(www\.|mobile\.)?twitter\.com"
@@ -32,37 +32,39 @@ index 7428814..b99f520 100644
    # Videos cannot be supported uniformly between Teddit and Libreddit,
    # so v.redd.it links will not be replaced.
    # Images aren't supported due to errors from Teddit when the image
-@@ -56,24 +56,24 @@ proc replaceUrls*(body: string; prefs: Prefs; absolute=""): string =
-   result = body
+@@ -60,26 +60,26 @@ proc replaceUrls*(body: string; prefs: Prefs; absolute=""): string =
  
    if prefs.replaceYouTube.len > 0 and "youtu" in result:
--    result = result.replace(ytRegex, prefs.replaceYouTube)
-+    result = result.replace(ytRegex, "//" & prefs.replaceYouTube)
+     let youtubeHost = strip(prefs.replaceYouTube, chars={'/'})
+-    result = result.replace(ytRegex, youtubeHost)
++    result = result.replace(ytRegex, "//" & youtubeHost)
  
    if prefs.replaceTwitter.len > 0:
+     let twitterHost = strip(prefs.replaceTwitter, chars={'/'})
      if tco in result:
--      result = result.replace(tco, https & prefs.replaceTwitter & "/t.co")
-+      result = result.replace(tco, "//" & prefs.replaceTwitter & "/t.co")
+-      result = result.replace(tco, https & twitterHost & "/t.co")
++      result = result.replace(tco, "//" & twitterHost & "/t.co")
      if "x.com" in result:
--      result = result.replace(xRegex, prefs.replaceTwitter)
-+      result = result.replace(xRegex, "//" & prefs.replaceTwitter)
+-      result = result.replace(xRegex, twitterHost)
++      result = result.replace(xRegex, "//" & twitterHost)
        result = result.replacef(xLinkRegex, a(
--        prefs.replaceTwitter & "$2", href = https & prefs.replaceTwitter & "$1"))
-+        prefs.replaceTwitter & "$2", href = "//" & prefs.replaceTwitter & "$1"))
+-        twitterHost & "$2", href = https & twitterHost & "$1"))
++        twitterHost & "$2", href = "//" & twitterHost & "$1"))
      if "twitter.com" in result:
-       result = result.replace(cards, prefs.replaceTwitter & "/cards")
--      result = result.replace(twRegex, prefs.replaceTwitter)
-+      result = result.replace(twRegex, "//" & prefs.replaceTwitter)
+       result = result.replace(cards, twitterHost & "/cards")
+-      result = result.replace(twRegex, twitterHost)
++      result = result.replace(twRegex, "//" & twitterHost)
        result = result.replacef(twLinkRegex, a(
--        prefs.replaceTwitter & "$2", href = https & prefs.replaceTwitter & "$1"))
-+        prefs.replaceTwitter & "$2", href = "//" & prefs.replaceTwitter & "$1"))
+-        twitterHost & "$2", href = https & twitterHost & "$1"))
++        twitterHost & "$2", href = "//" & twitterHost & "$1"))
  
    if prefs.replaceReddit.len > 0 and ("reddit.com" in result or "redd.it" in result):
--    result = result.replace(rdShortRegex, prefs.replaceReddit & "/comments/")
--    result = result.replace(rdRegex, prefs.replaceReddit)
-+    result = result.replace(rdShortRegex, "//" & prefs.replaceReddit & "/comments/")
-+    result = result.replace(rdRegex, "//" & prefs.replaceReddit)
-     if prefs.replaceReddit in result and "/gallery/" in result:
+     let redditHost = strip(prefs.replaceReddit, chars={'/'})
+-    result = result.replace(rdShortRegex, redditHost & "/comments/")
+-    result = result.replace(rdRegex, redditHost)
++    result = result.replace(rdShortRegex, "//" & redditHost & "/comments/")
++    result = result.replace(rdRegex, "//" & redditHost)
+     if redditHost in result and "/gallery/" in result:
        result = result.replace("/gallery/", "/comments/")
  
 -- 

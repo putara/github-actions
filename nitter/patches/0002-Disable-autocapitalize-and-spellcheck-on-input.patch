@@ -1,0 +1,39 @@
+From e3b11c3c8a2c5b307258657c5a2c2b7aab2a2faf Mon Sep 17 00:00:00 2001
+From: putara <38089082+putara@users.noreply.github.com>
+Date: Sat, 29 Nov 2025 22:48:52 +1300
+Subject: [PATCH 2/2] Disable autocapitalize and spellcheck on input
+
+---
+ src/views/renderutils.nim | 2 +-
+ src/views/search.nim      | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/views/renderutils.nim b/src/views/renderutils.nim
+index 377a443..9948ab9 100644
+--- a/src/views/renderutils.nim
++++ b/src/views/renderutils.nim
+@@ -76,7 +76,7 @@ proc genInput*(pref, label, state, placeholder: string; class=""; autofocus=true
+   buildHtml(tdiv(class=("pref-group pref-input " & class))):
+     if label.len > 0:
+       label(`for`=pref): text label
+-    input(name=pref, `type`="text", placeholder=p, value=state, autofocus=(autofocus and state.len == 0))
++    input(name=pref, `type`="text", placeholder=p, value=state, autofocus=(autofocus and state.len == 0), autocapitalize="none", spellcheck="false")
+ 
+ proc genSelect*(pref, label, state: string; options: seq[string]): VNode =
+   buildHtml(tdiv(class="pref-group pref-input")):
+diff --git a/src/views/search.nim b/src/views/search.nim
+index a43008f..c127e11 100644
+--- a/src/views/search.nim
++++ b/src/views/search.nim
+@@ -23,7 +23,7 @@ proc renderSearch*(): VNode =
+     tdiv(class="search-bar"):
+       form(`method`="get", action="/search", autocomplete="off"):
+         hiddenField("f", "tweets")
+-        input(`type`="text", name="q", autofocus="",
++        input(`type`="text", name="q", autofocus="", autocapitalize="none", spellcheck="false",
+               placeholder="Search...", dir="auto")
+         button(`type`="submit"): icon "search"
+ 
+-- 
+2.51.0
+
