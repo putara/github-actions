@@ -1,0 +1,66 @@
+From 3f6dc165235aa9b3fdf7087e349759f095dfbeb5 Mon Sep 17 00:00:00 2001
+From: putara <38089082+putara@users.noreply.github.com>
+Date: Fri, 5 Dec 2025 02:19:45 +1300
+Subject: [PATCH] Fix badge icon getting overflown on webkit
+
+---
+ src/sass/profile/card.scss |  1 +
+ src/sass/tweet/_base.scss  | 11 +++++++++++
+ src/views/renderutils.nim  |  2 +-
+ 3 files changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/src/sass/profile/card.scss b/src/sass/profile/card.scss
+index 46a9679..2a78608 100644
+--- a/src/sass/profile/card.scss
++++ b/src/sass/profile/card.scss
+@@ -32,6 +32,7 @@
+     font-weight: bold;
+     text-shadow: none;
+     max-width: 100%;
++    display: flex;
+ }
+ 
+ .profile-card-avatar {
+diff --git a/src/sass/tweet/_base.scss b/src/sass/tweet/_base.scss
+index 8b9c6e5..881a54a 100644
+--- a/src/sass/tweet/_base.scss
++++ b/src/sass/tweet/_base.scss
+@@ -44,11 +44,22 @@
+   padding: 0;
+   display: flex;
+   justify-content: space-between;
++
++  a {
++    display: inline-flex;
++    margin-left: 0;
++  }
+ }
+ 
+ .fullname-and-username {
+   display: flex;
+   min-width: 0;
++  flex-wrap: wrap;
++}
++
++.fullname-text {
++  text-overflow: ellipsis;
++  overflow: hidden;
+ }
+ 
+ .fullname {
+diff --git a/src/views/renderutils.nim b/src/views/renderutils.nim
+index 9948ab9..3e0b423 100644
+--- a/src/views/renderutils.nim
++++ b/src/views/renderutils.nim
+@@ -40,7 +40,7 @@ proc linkUser*(user: User, class=""): VNode =
+                else: "@" & user.username
+ 
+   buildHtml(a(href=href, class=class, title=nameText)):
+-    text nameText
++    span(class="fullname-text"): text nameText
+     if isName:
+       verifiedIcon(user)
+       if user.protected:
+-- 
+2.51.0
+
