@@ -1,0 +1,25 @@
+From f1e3141cee84d407c80705670e3f2dd932c8c473 Mon Sep 17 00:00:00 2001
+From: putara <38089082+putara@users.noreply.github.com>
+Date: Tue, 9 Dec 2025 21:09:29 +1300
+Subject: [PATCH] Prevent autofocus on search
+
+---
+ src/views/search.nim | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/views/search.nim b/src/views/search.nim
+index c127e11..ace6978 100644
+--- a/src/views/search.nim
++++ b/src/views/search.nim
+@@ -59,7 +59,7 @@ proc renderSearchPanel*(query: Query): VNode =
+   buildHtml(form(`method`="get", action=action,
+                  class="search-field", autocomplete="off")):
+     hiddenField("f", "tweets")
+-    genInput("q", "", query.text, "Enter search...", class="pref-inline")
++    genInput("q", "", query.text, "Enter search...", class="pref-inline", autofocus=false)
+     button(`type`="submit"): icon "search"
+ 
+     input(id="search-panel-toggle", `type`="checkbox", checked=isPanelOpen(query))
+-- 
+2.52.0
+
