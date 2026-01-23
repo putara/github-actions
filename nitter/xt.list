@@ -1,5 +1,4 @@
 0001-Allow-http-instead-of-https-for-local-use.patch
 0002-Disable-autocapitalize-and-spellcheck-on-input.patch
 0003-Add-button-to-view-quote-tweets.patch
-0004-Fix-badge-icon-getting-overflown-on-webkit.patch
 0005-Prevent-autofocus-on-search.patch
