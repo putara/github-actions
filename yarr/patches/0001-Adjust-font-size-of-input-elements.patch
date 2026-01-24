@@ -1,0 +1,35 @@
+From 032eefc7b47cc80cdb0a206cb4d9b5ff6a549584 Mon Sep 17 00:00:00 2001
+From: putara <38089082+putara@users.noreply.github.com>
+Date: Sat, 24 Jan 2026 18:53:57 +1300
+Subject: [PATCH] Adjust font size of input elements
+
+---
+ src/assets/stylesheets/app.css | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/src/assets/stylesheets/app.css b/src/assets/stylesheets/app.css
+index 7c8c2de..967b45e 100644
+--- a/src/assets/stylesheets/app.css
++++ b/src/assets/stylesheets/app.css
+@@ -16,6 +16,10 @@ body {
+   color: inherit;
+ }
+ 
++.form-control {
++  font-size: 16px;
++}
++
+ .form-control, .form-control:focus {
+   box-shadow: inset 0px 1px 1px rgba(0, 0, 0, 0.07) !important;
+ }
+@@ -335,6 +339,7 @@ select.form-control:not([multiple]):not([size]) {
+   border: none;
+   border-radius: 3px;
+   padding: .25rem .5rem;
++  font-size: 16px;
+   line-height: 1;
+ }
+ 
+-- 
+2.39.5
+
