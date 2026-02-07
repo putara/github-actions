@@ -1,4 +1,4 @@
-From d895e460f1fb504a319bb15f6e59438fa154b6f9 Mon Sep 17 00:00:00 2001
+From 1a3dd30e0268b7d30b84a6b478ad69eece3ba90f Mon Sep 17 00:00:00 2001
 From: Fijxu <fijxu@nadeko.net>
 Date: Wed, 26 Feb 2025 17:51:54 -0300
 Subject: [PATCH 4/4] feat(Database::Videos): built-in video cache and support
@@ -23,22 +23,25 @@ cache get   4.31k (232.11µs) (± 5.50%)  104kB/op  fastest
 cache get  22.27k ( 44.90µs) (± 6.40%)  264B/op  fastest
 cache insert   4.74k (211.01µs) (± 4.72%)  65.7kB/op  fastest
 cache get   2.51k (399.11µs) (±13.15%)  129kB/op  fastest
-
 ---
-
-OP/s are way higher, and memory usage per call is lower, so it's a win
-win.
----
- src/invidious.cr                 |  13 ---
+ src/invidious.cr                 |  14 ---
  src/invidious/config.cr          |  21 +++-
  src/invidious/database/videos.cr | 172 +++++++++++++++++++++++++------
- 3 files changed, 162 insertions(+), 44 deletions(-)
+ 3 files changed, 162 insertions(+), 45 deletions(-)
 
 diff --git a/src/invidious.cr b/src/invidious.cr
-index 4bd9af60..f3aab084 100644
+index c758e05c..7c6b39c3 100644
 --- a/src/invidious.cr
 +++ b/src/invidious.cr
-@@ -140,19 +140,6 @@ end
+@@ -30,7 +30,6 @@ require "xml"
+ require "yaml"
+ require "compress/zip"
+ require "protodec/utils"
+-require "redis"
+ 
+ require "./invidious/database/*"
+ require "./invidious/database/migrations/*"
+@@ -135,19 +134,6 @@ end
  OUTPUT = CONFIG.output.upcase == "STDOUT" ? STDOUT : File.open(CONFIG.output, mode: "a")
  LOGGER = Invidious::LogHandler.new(OUTPUT, CONFIG.log_level, CONFIG.colorize_logs)
  
@@ -59,10 +62,10 @@ index 4bd9af60..f3aab084 100644
  Invidious::Database.check_integrity(CONFIG)
  
 diff --git a/src/invidious/config.cr b/src/invidious/config.cr
-index eb504865..a636efcb 100644
+index e7ed6737..e795826d 100644
 --- a/src/invidious/config.cr
 +++ b/src/invidious/config.cr
-@@ -183,7 +183,16 @@ class Config
+@@ -180,7 +180,16 @@ class Config
    # Playlist length limit
    property playlist_length_limit : Int32 = 500
  
@@ -80,7 +83,7 @@ index eb504865..a636efcb 100644
  
    def disabled?(option)
      case disabled = CONFIG.disable_proxy
-@@ -321,6 +330,16 @@ class Config
+@@ -320,6 +329,16 @@ class Config
        end
      end
  
@@ -315,5 +318,5 @@ index e826ae79..33d0a100 100644
    end
  end
 -- 
-2.49.0
+2.52.0
 

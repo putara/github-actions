@@ -1,4 +1,4 @@
-From 4571851789676ce470e0a85cdd022a3e7f501212 Mon Sep 17 00:00:00 2001
+From effccd59e0b4f10266f2119eaba68554d9c16de6 Mon Sep 17 00:00:00 2001
 From: Fijxu <fijxu@nadeko.net>
 Date: Mon, 24 Feb 2025 13:26:52 -0300
 Subject: [PATCH 3/4] feat(dev): add option to disable video cache on the
@@ -10,10 +10,10 @@ Subject: [PATCH 3/4] feat(dev): add option to disable video cache on the
  2 files changed, 3 insertions(+), 1 deletion(-)
 
 diff --git a/src/invidious/config.cr b/src/invidious/config.cr
-index 65d73df8..eb504865 100644
+index ae928690..e7ed6737 100644
 --- a/src/invidious/config.cr
 +++ b/src/invidious/config.cr
-@@ -183,6 +183,8 @@ class Config
+@@ -180,6 +180,8 @@ class Config
    # Playlist length limit
    property playlist_length_limit : Int32 = 500
  
@@ -36,5 +36,5 @@ index 64d18068..e826ae79 100644
  
    def delete(id)
 -- 
-2.49.0
+2.52.0
 
