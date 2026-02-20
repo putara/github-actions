@@ -9,11 +9,17 @@ on:
   schedule:
     - cron: "4 4 * * 4"
 
+env:
+  REPO_NAME: yarr
+  REPO_SRCDIR: yarr-src
+  REPO_URL: https://github.com/nkanaev/yarr.git
+  REPO_BRANCH: master
+
 jobs:
   prep:
     outputs:
-      yarr-rev: ${{ steps.latest.outputs.yarr-rev }}
-      yarr-timestamp: ${{ steps.latest.outputs.yarr-timestamp }}
+      upstream-rev: ${{ steps.latest.outputs.upstream-rev }}
+      build-timestamp: ${{ steps.latest.outputs.build-timestamp }}
     name: Preparation
     runs-on: ubuntu-latest
 
@@ -21,9 +27,9 @@ jobs:
       - name: Get the latest commit
         id: latest
         run: |
-          rev=$(git ls-remote -h https://github.com/nkanaev/yarr.git master | cut -f 1)
-          echo "yarr-rev=$rev" >> "$GITHUB_OUTPUT"
-          echo "yarr-timestamp=$(TZ=Pacific/Auckland date +%Y%m%d)" >> "$GITHUB_OUTPUT"
+          rev=$(git ls-remote -h "${{ env.REPO_URL }}" "${{ env.REPO_BRANCH }}" | cut -f 1)
+          echo "upstream-rev=$rev" >> "$GITHUB_OUTPUT"
+          echo "build-timestamp=$(TZ=Pacific/Auckland date +%Y%m%d)" >> "$GITHUB_OUTPUT"
 
   build:
     # amd/arm build inspired by https://github.com/iv-org/invidious/blob/master/.github/workflows/ci.yml
@@ -43,7 +49,7 @@ jobs:
     name: Build for ${{ matrix.name }}
     needs: prep
     env:
-      YARR_REV: ${{ needs.prep.outputs.yarr-rev }}
+      UPSTREAM_REV: ${{ needs.prep.outputs.upstream-rev }}
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -51,16 +57,16 @@ jobs:
         if: github.ref_name == 'main' && github.event_name == 'schedule'
         uses: actions/cache@v3
         with:
-          path: /tmp/GAC/yarr
-          key: ${{ runner.os }}--yarr
+          path: /tmp/GAC/${{ env.REPO_NAME }}
+          key: ${{ runner.os }}--${{ env.REPO_NAME }}
       - name: Check last build info
         id: check
         run: |
-          tag_file=/tmp/GAC/yarr/tag
+          tag_file=/tmp/GAC/${{ env.REPO_NAME }}/tag
           last_tag=$(cat "$tag_file" 2>/dev/null || echo -n)
-          if [[ "$last_tag" != "$YARR_REV" ]]; then
+          if [[ "$last_tag" != "$UPSTREAM_REV" ]]; then
             mkdir -p "${tag_file%/*}"
-            echo "$YARR_REV" > "$tag_file"
+            echo "$UPSTREAM_REV" > "$tag_file"
           else
             echo 'skip-release=true' >> "$GITHUB_OUTPUT"
           fi
@@ -74,21 +80,21 @@ jobs:
           git config --global user.email nobody@localhost
           git config --global user.name nobody
           echo "::group::Clone repo"
-          git clone https://github.com/nkanaev/yarr.git yarr-src
-          cd yarr-src
+          git clone --revision="$UPSTREAM_REV" "${{ env.REPO_URL }}" "${{ env.REPO_SRCDIR }}"
+          cd "${{ env.REPO_SRCDIR }}"
           echo "::endgroup::"
           echo "::group::Tag version"
           tag=$(git rev-parse HEAD)
           echo "$tag"
-          mkdir -p /tmp/GAC/yarr && echo "$tag" > /tmp/GAC/yarr/version
+          mkdir -p /tmp/GAC/${{ env.REPO_NAME }} && echo "$tag" > /tmp/GAC/${{ env.REPO_NAME }}/version
           echo "::endgroup::"
       - name: Merge patches
         if: steps.check.outputs.skip-release != 'true'
         run: |
-          cd yarr-src
-          for i in $(grep -vE '^#' ../yarr/xt.list); do
+          cd "${{ env.REPO_SRCDIR }}"
+          for i in $(grep -vE '^#' ../${{ env.REPO_NAME }}/xt.list); do
             echo "::group::$i"
-            git am -3 "../yarr/patches/$i"
+            git am -3 "../${{ env.REPO_NAME }}/patches/$i"
             echo "::endgroup::"
           done
       - name: Set up Docker Buildx
@@ -105,8 +111,8 @@ jobs:
         uses: docker/build-push-action@v4
         if: steps.check.outputs.skip-release != 'true'
         with:
-          context: ./yarr-src
-          file: ./yarr/dockerfile
+          context: ./${{ env.REPO_SRCDIR }}
+          file: ./${{ env.REPO_SRCDIR }}/dockerfile
           platforms: ${{ matrix.platform }}
           push: true
           tags: quay.io/putara/yarr:${{ matrix.latest }}, quay.io/putara/yarr:${{ matrix.alpine }}

@@ -9,11 +9,17 @@ on:
   schedule:
     - cron: "5 5 * * 2,5"
 
+env:
+  REPO_NAME: invidious
+  REPO_SRCDIR: invidious-src
+  REPO_URL: https://github.com/iv-org/invidious.git
+  REPO_BRANCH: master
+
 jobs:
   prep:
     outputs:
-      invidious-rev: ${{ steps.latest.outputs.invidious-rev }}
-      invidious-timestamp: ${{ steps.latest.outputs.invidious-timestamp }}
+      upstream-rev: ${{ steps.latest.outputs.upstream-rev }}
+      build-timestamp: ${{ steps.latest.outputs.build-timestamp }}
     name: Preparation
     runs-on: ubuntu-latest
 
@@ -21,9 +27,9 @@ jobs:
       - name: Get the latest commit
         id: latest
         run: |
-          rev=$(git ls-remote -h https://github.com/iv-org/invidious.git master | cut -f 1)
-          echo "invidious-rev=$rev" >> "$GITHUB_OUTPUT"
-          echo "invidious-timestamp=$(TZ=Pacific/Auckland date +%Y%m%d)" >> "$GITHUB_OUTPUT"
+          rev=$(git ls-remote -h "${{ env.REPO_URL }}" "${{ env.REPO_BRANCH }}" | cut -f 1)
+          echo "upstream-rev=$rev" >> "$GITHUB_OUTPUT"
+          echo "build-timestamp=$(TZ=Pacific/Auckland date +%Y%m%d)" >> "$GITHUB_OUTPUT"
 
   build:
     # amd/arm build inspired by https://github.com/iv-org/invidious/blob/master/.github/workflows/ci.yml
@@ -34,18 +40,18 @@ jobs:
             name: AMD64
             prefix: amd64
             platform: linux/amd64
-            dockerfile: Dockerfile
+            dockerfile: docker/Dockerfile
             latest: latest
           - os: ubuntu-24.04-arm
             name: ARM64
             prefix: arm64
             platform: linux/arm64/v8
-            dockerfile: Dockerfile.arm64
+            dockerfile: docker/Dockerfile.arm64
             latest: latest-arm64
     name: Build for ${{ matrix.name }}
     needs: prep
     env:
-      INVIDIOUS_REV: ${{ needs.prep.outputs.invidious-rev }}
+      UPSTREAM_REV: ${{ needs.prep.outputs.upstream-rev }}
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -53,16 +59,16 @@ jobs:
         if: github.ref_name == 'main' && github.event_name == 'schedule'
         uses: actions/cache@v3
         with:
-          path: /tmp/GAC/invidious
-          key: ${{ runner.os }}--invidious
+          path: /tmp/GAC/${{ env.REPO_NAME }}
+          key: ${{ runner.os }}--${{ env.REPO_NAME }}
       - name: Check last build info
         id: check
         run: |
-          tag_file=/tmp/GAC/invidious/tag
+          tag_file=/tmp/GAC/${{ env.REPO_NAME }}/tag
           last_tag=$(cat "$tag_file" 2>/dev/null || echo -n)
-          if [[ "$last_tag" != "$INVIDIOUS_REV" ]]; then
+          if [[ "$last_tag" != "$UPSTREAM_REV" ]]; then
             mkdir -p "${tag_file%/*}"
-            echo "$INVIDIOUS_REV" > "$tag_file"
+            echo "$UPSTREAM_REV" > "$tag_file"
           else
             echo 'skip-release=true' >> "$GITHUB_OUTPUT"
           fi
@@ -70,10 +76,10 @@ jobs:
         if: steps.check.outputs.skip-release != 'true'
         run: |
           if [[ "${{ github.ref_name }}" == "main" ]]; then
-            echo "branch=invidious" >> $GITHUB_ENV
+            echo "branch=${{ env.REPO_NAME }}" >> $GITHUB_ENV
             echo "expires=5w" >> $GITHUB_ENV
           else
-            echo "branch=test-invidious" >> $GITHUB_ENV
+            echo "branch=test-${{ env.REPO_NAME }}" >> $GITHUB_ENV
             echo "expires=3d" >> $GITHUB_ENV
           fi
       - name: Checkout
@@ -86,28 +92,28 @@ jobs:
           git config --global user.email nobody@localhost
           git config --global user.name nobody
           echo "::group::Clone repo"
-          git clone --revision="$INVIDIOUS_REV" https://github.com/iv-org/invidious.git invidious-src
-          cd invidious-src
+          git clone --revision="$UPSTREAM_REV" "${{ env.REPO_URL }}" "${{ env.REPO_SRCDIR }}"
+          cd "${{ env.REPO_SRCDIR }}"
           git config --add remote.origin.fetch '+refs/pull/*/head:refs/remotes/origin/pr/*'
           git fetch --all
           echo "::endgroup::"
           echo "::group::Tag version"
           tag=$(git rev-parse HEAD)
           echo "$tag"
-          mkdir -p /tmp/GAC/invidious && echo "$tag" > /tmp/GAC/invidious/version
+          mkdir -p /tmp/GAC/${{ env.REPO_NAME }} && echo "$tag" > /tmp/GAC/${{ env.REPO_NAME }}/version
           echo "::endgroup::"
       - name: Merge patches
         if: steps.check.outputs.skip-release != 'true'
         run: |
-          cd invidious-src
-          for i in $(grep -vE '^#' ../invidious/pr.list); do
+          cd "${{ env.REPO_SRCDIR }}"
+          for i in $(grep -vE '^#' ../${{ env.REPO_NAME }}/pr.list); do
             echo "::group::PR#$i"
             git merge --no-edit "origin/pr/$i"
             echo "::endgroup::"
           done
-          for i in $(grep -vE '^#' ../invidious/xt.list); do
+          for i in $(grep -vE '^#' ../${{ env.REPO_NAME }}/xt.list); do
             echo "::group::$i"
-            git am -3 "../invidious/patches/$i"
+            git am -3 "../${{ env.REPO_NAME }}/patches/$i"
             echo "::endgroup::"
           done
       - name: Set up Docker Buildx
@@ -124,12 +130,12 @@ jobs:
         uses: docker/build-push-action@v4
         if: steps.check.outputs.skip-release != 'true'
         with:
-          context: ./invidious-src
-          file: ./invidious-src/docker/${{ matrix.dockerfile }}
+          context: ./${{ env.REPO_SRCDIR }}
+          file: ./${{ env.REPO_SRCDIR }}/${{ matrix.dockerfile }}
           platforms: ${{ matrix.platform }}
           labels: quay.expires-after=${{ env.expires }}
           push: true
-          tags: quay.io/putara/${{ env.branch }}:${{ matrix.latest }}, quay.io/putara/${{ env.branch }}:${{ matrix.prefix }}-${{ needs.prep.outputs.invidious-timestamp }}
+          tags: quay.io/putara/${{ env.branch }}:${{ matrix.latest }}, quay.io/putara/${{ env.branch }}:${{ matrix.prefix }}-${{ needs.prep.outputs.build-timestamp }}
           build-args: |
             "release=1"
             "disable_quic=1"
