@@ -112,7 +112,7 @@ jobs:
         if: steps.check.outputs.skip-release != 'true'
         with:
           context: ./${{ env.REPO_SRCDIR }}
-          file: ./${{ env.REPO_SRCDIR }}/dockerfile
+          file: ./${{ env.REPO_SRCDIR }}/etc/dockerfile
           platforms: ${{ matrix.platform }}
           push: true
           tags: quay.io/putara/yarr:${{ matrix.latest }}, quay.io/putara/yarr:${{ matrix.alpine }}
