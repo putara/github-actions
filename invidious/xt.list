@@ -1,3 +1,4 @@
+PR2469-limit-feeds-and-delete-materialized-views.patch
 0001-use-redis-for-video-cache.patch
 0002-feat-database-support-for-either-Redis-or-PostgreSQL.patch
 0003-feat-dev-add-option-to-disable-video-cache-on-the-da.patch
