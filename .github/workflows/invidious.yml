@@ -46,7 +46,7 @@ jobs:
             name: ARM64
             prefix: arm64
             platform: linux/arm64/v8
-            dockerfile: docker/Dockerfile.arm64
+            dockerfile: docker/Dockerfile
             latest: latest-arm64
     name: Build for ${{ matrix.name }}
     needs: prep
