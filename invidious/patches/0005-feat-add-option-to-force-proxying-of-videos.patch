@@ -1,4 +1,4 @@
-From 05f7538498a83b89a84910a8ebbe742a258f45fe Mon Sep 17 00:00:00 2001
+From c8ee601f96f70c97485615786c38b0a1eed5f4b4 Mon Sep 17 00:00:00 2001
 From: Fijxu <fijxu@nadeko.net>
 Date: Mon, 24 Mar 2025 21:15:38 -0300
 Subject: [PATCH] feat: add option to force proxying of videos
@@ -23,19 +23,19 @@ index 43460cf5..557a70d8 100644
      include YAML::Serializable
  
 diff --git a/src/invidious/videos/video_preferences.cr b/src/invidious/videos/video_preferences.cr
-index 48177bd8..843ef30f 100644
+index 38870947..7b814314 100644
 --- a/src/invidious/videos/video_preferences.cr
 +++ b/src/invidious/videos/video_preferences.cr
-@@ -109,7 +109,9 @@ def process_video_params(query, preferences)
-     quality = "high"
-   end
+@@ -112,7 +112,9 @@ module Invidious::Videos
+       quality = "high"
+     end
  
--  if CONFIG.disabled?("local") && local
-+  if CONFIG.force_local
-+    local = true
-+  elsif CONFIG.disabled?("local") && local
-     local = false
-   end
+-    if CONFIG.disabled?("local") && local
++    if CONFIG.force_local
++      local = true
++    elsif CONFIG.disabled?("local") && local
+       local = false
+     end
  
 diff --git a/src/invidious/views/user/preferences.ecr b/src/invidious/views/user/preferences.ecr
 index 703423c0..391cfbd2 100644
