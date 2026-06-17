@@ -1,4 +1,4 @@
-From d5669c28ddbe7eeb451abce772428a3836845ff0 Mon Sep 17 00:00:00 2001
+From 159fae859d48ee8faa94867102acdbba0c22bb71 Mon Sep 17 00:00:00 2001
 From: putara <38089082+putara@users.noreply.github.com>
 Date: Sun, 30 Nov 2025 00:11:46 +1300
 Subject: [PATCH] Add button to view quote tweets
@@ -10,12 +10,12 @@ PR #1284
  2 files changed, 9 insertions(+), 3 deletions(-)
 
 diff --git a/src/sass/tweet/_base.scss b/src/sass/tweet/_base.scss
-index 7f2d931..8b9c6e5 100644
+index 7606c31..ebbf583 100644
 --- a/src/sass/tweet/_base.scss
 +++ b/src/sass/tweet/_base.scss
-@@ -205,6 +205,11 @@
- .tweet-stats {
+@@ -211,6 +211,11 @@
    margin-bottom: -3px;
+   user-select: none;
    -webkit-user-select: none;
 +
 +  a {
@@ -26,7 +26,7 @@ index 7f2d931..8b9c6e5 100644
  
  .tweet-stat {
 diff --git a/src/views/tweet.nim b/src/views/tweet.nim
-index 58d03a9..f328a41 100644
+index 9bf6c9b..ee9c64d 100644
 --- a/src/views/tweet.nim
 +++ b/src/views/tweet.nim
 @@ -1,5 +1,5 @@
@@ -36,28 +36,28 @@ index 58d03a9..f328a41 100644
  import karax/[karaxdsl, vdom, vstyles]
  from jester import Request
  
-@@ -179,10 +179,11 @@ func formatStat(stat: int): string =
+@@ -240,10 +240,11 @@ func formatStat(stat: int): string =
    if stat > 0: insertSep($stat, ',')
    else: ""
  
--proc renderStats(stats: TweetStats): VNode =
-+proc renderStats(tweet_id: int64; stats: TweetStats): VNode =
+-proc renderStats*(stats: TweetStats): VNode =
++proc renderStats*(stats: TweetStats, tweet_id: int64 = 0): VNode =
    buildHtml(tdiv(class="tweet-stats")):
      span(class="tweet-stat"): icon "comment", formatStat(stats.replies)
      span(class="tweet-stat"): icon "retweet", formatStat(stats.retweets)
-+    a(class="tweet-stat", href=("/search?q=" & encodeUrl(&"-from:quotedreplies url:{tweet_id}") & "&e-nativeretweets=on")): icon "quote"
++    if tweet_id > 0: a(class="tweet-stat", href=("/search?q=" & encodeUrl(&"-from:quotedreplies url:{tweet_id}") & "&e-nativeretweets=on")): icon "quote"
      span(class="tweet-stat"): icon "heart", formatStat(stats.likes)
      span(class="tweet-stat"): icon "views", formatStat(stats.views)
  
-@@ -339,7 +340,7 @@ proc renderTweet*(tweet: Tweet; prefs: Prefs; path: string; class=""; index=0;
+@@ -447,7 +448,7 @@ proc renderTweet*(tweet: Tweet; prefs: Prefs; path: string; class=""; index=0;
          renderMediaTags(tweet.mediaTags)
  
        if not prefs.hideTweetStats:
 -        renderStats(tweet.stats)
-+        renderStats(tweet.id, tweet.stats)
++        renderStats(tweet.stats, tweet.id)
  
-       if showThread:
-         a(class="show-thread", href=("/i/status/" & $tweet.threadId)):
+ proc renderTweetEmbed*(tweet: Tweet; path: string; prefs: Prefs; cfg: Config; req: Request): string =
+   let node = buildHtml(html(lang="en")):
 -- 
-2.51.0
+2.54.0
 
