@@ -1,4 +1,4 @@
-From 1a3dd30e0268b7d30b84a6b478ad69eece3ba90f Mon Sep 17 00:00:00 2001
+From ddaf2aca28fa83bd997ad48e5df50e24d80554db Mon Sep 17 00:00:00 2001
 From: Fijxu <fijxu@nadeko.net>
 Date: Wed, 26 Feb 2025 17:51:54 -0300
 Subject: [PATCH 4/4] feat(Database::Videos): built-in video cache and support
@@ -30,7 +30,7 @@ cache get   2.51k (399.11µs) (±13.15%)  129kB/op  fastest
  3 files changed, 162 insertions(+), 45 deletions(-)
 
 diff --git a/src/invidious.cr b/src/invidious.cr
-index c758e05c..7c6b39c3 100644
+index 6bc6b672..fe4ecb42 100644
 --- a/src/invidious.cr
 +++ b/src/invidious.cr
 @@ -30,7 +30,6 @@ require "xml"
@@ -62,12 +62,12 @@ index c758e05c..7c6b39c3 100644
  Invidious::Database.check_integrity(CONFIG)
  
 diff --git a/src/invidious/config.cr b/src/invidious/config.cr
-index e7ed6737..e795826d 100644
+index 160eb3c6..b762f999 100644
 --- a/src/invidious/config.cr
 +++ b/src/invidious/config.cr
-@@ -180,7 +180,16 @@ class Config
-   # Playlist length limit
-   property playlist_length_limit : Int32 = 500
+@@ -186,7 +186,16 @@ class Config
+   # Disable easy to abuse API endpoints
+   property disable_abusable_api : Bool = false
  
 -  property video_cache : Bool = true
 +  property video_cache : VideoCacheConfig
@@ -83,7 +83,7 @@ index e7ed6737..e795826d 100644
  
    def disabled?(option)
      case disabled = CONFIG.disable_proxy
-@@ -320,6 +329,16 @@ class Config
+@@ -326,6 +335,16 @@ class Config
        end
      end
  
@@ -318,5 +318,5 @@ index e826ae79..33d0a100 100644
    end
  end
 -- 
-2.52.0
+2.54.0
 
