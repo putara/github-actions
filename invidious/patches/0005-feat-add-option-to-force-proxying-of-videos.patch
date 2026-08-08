@@ -1,22 +1,23 @@
-From c8ee601f96f70c97485615786c38b0a1eed5f4b4 Mon Sep 17 00:00:00 2001
+From 59c68e3fd459ee3a64f6944295c2337aa8655f53 Mon Sep 17 00:00:00 2001
 From: Fijxu <fijxu@nadeko.net>
 Date: Mon, 24 Mar 2025 21:15:38 -0300
-Subject: [PATCH] feat: add option to force proxying of videos
+Subject: [PATCH 5/5] feat: add option to force proxying of videos
 
 ---
- src/invidious/config.cr                   | 2 ++
+ src/invidious/config.cr                   | 3 +++
  src/invidious/videos/video_preferences.cr | 4 +++-
  src/invidious/views/user/preferences.ecr  | 5 ++++-
- 3 files changed, 9 insertions(+), 2 deletions(-)
+ 3 files changed, 10 insertions(+), 2 deletions(-)
 
 diff --git a/src/invidious/config.cr b/src/invidious/config.cr
-index 43460cf5..557a70d8 100644
+index 6281ae54..7b994689 100644
 --- a/src/invidious/config.cr
 +++ b/src/invidious/config.cr
-@@ -184,6 +184,8 @@ class Config
- 
+@@ -179,6 +179,9 @@ class Config
+   # Cache videos
    property video_cache : VideoCacheConfig
  
++  # Force proxy videos
 +  property force_local : Bool = true
 +
    class VideoCacheConfig
@@ -38,7 +39,7 @@ index 38870947..7b814314 100644
      end
  
 diff --git a/src/invidious/views/user/preferences.ecr b/src/invidious/views/user/preferences.ecr
-index 703423c0..391cfbd2 100644
+index d6692081..ef5e86f4 100644
 --- a/src/invidious/views/user/preferences.ecr
 +++ b/src/invidious/views/user/preferences.ecr
 @@ -34,7 +34,10 @@
@@ -54,5 +55,5 @@ index 703423c0..391cfbd2 100644
  
              <div class="pure-control-group">
 -- 
-2.54.0
+2.55.0
 

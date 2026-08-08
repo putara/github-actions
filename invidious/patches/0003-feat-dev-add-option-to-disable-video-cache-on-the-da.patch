@@ -1,27 +1,28 @@
-From 2a75f71003a272b9be008851159c8c3c6e2d7b1d Mon Sep 17 00:00:00 2001
+From 7b8208e3da2a5f86447224f3da678d1f966d4376 Mon Sep 17 00:00:00 2001
 From: Fijxu <fijxu@nadeko.net>
 Date: Mon, 24 Feb 2025 13:26:52 -0300
-Subject: [PATCH 3/4] feat(dev): add option to disable video cache on the
+Subject: [PATCH 3/5] feat(dev): add option to disable video cache on the
  database (for development purposes only)
 
 ---
- src/invidious/config.cr          | 2 ++
+ src/invidious/config.cr          | 3 +++
  src/invidious/database/videos.cr | 2 +-
- 2 files changed, 3 insertions(+), 1 deletion(-)
+ 2 files changed, 4 insertions(+), 1 deletion(-)
 
 diff --git a/src/invidious/config.cr b/src/invidious/config.cr
-index 985bc4c2..160eb3c6 100644
+index c0c6dd07..72c38c88 100644
 --- a/src/invidious/config.cr
 +++ b/src/invidious/config.cr
-@@ -186,6 +186,8 @@ class Config
-   # Disable easy to abuse API endpoints
-   property disable_abusable_api : Bool = false
+@@ -176,6 +176,9 @@ class Config
+   # Use Innertube's transcripts API instead of timedtext for closed captions
+   property use_innertube_for_captions : Bool = false
  
++  # Cache videos
 +  property video_cache : Bool = true
 +
-   def disabled?(option)
-     case disabled = CONFIG.disable_proxy
-     when Bool
+   # Invidious companion
+   property invidious_companion : Array(CompanionConfig) = [] of CompanionConfig
+ 
 diff --git a/src/invidious/database/videos.cr b/src/invidious/database/videos.cr
 index 64d18068..e826ae79 100644
 --- a/src/invidious/database/videos.cr
@@ -36,5 +37,5 @@ index 64d18068..e826ae79 100644
  
    def delete(id)
 -- 
-2.54.0
+2.55.0
 

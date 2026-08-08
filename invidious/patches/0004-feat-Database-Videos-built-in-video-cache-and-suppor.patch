@@ -1,7 +1,7 @@
-From ddaf2aca28fa83bd997ad48e5df50e24d80554db Mon Sep 17 00:00:00 2001
+From f861e695bbc2b51a85e253be2db3c8221a229c90 Mon Sep 17 00:00:00 2001
 From: Fijxu <fijxu@nadeko.net>
 Date: Wed, 26 Feb 2025 17:51:54 -0300
-Subject: [PATCH 4/4] feat(Database::Videos): built-in video cache and support
+Subject: [PATCH 4/5] feat(Database::Videos): built-in video cache and support
  for multiple caching backends
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
@@ -62,13 +62,13 @@ index 6bc6b672..fe4ecb42 100644
  Invidious::Database.check_integrity(CONFIG)
  
 diff --git a/src/invidious/config.cr b/src/invidious/config.cr
-index 160eb3c6..b762f999 100644
+index 72c38c88..6281ae54 100644
 --- a/src/invidious/config.cr
 +++ b/src/invidious/config.cr
-@@ -186,7 +186,16 @@ class Config
-   # Disable easy to abuse API endpoints
-   property disable_abusable_api : Bool = false
+@@ -177,7 +177,16 @@ class Config
+   property use_innertube_for_captions : Bool = false
  
+   # Cache videos
 -  property video_cache : Bool = true
 +  property video_cache : VideoCacheConfig
 +
@@ -81,9 +81,9 @@ index 160eb3c6..b762f999 100644
 +    property lru_max_size : Int32 = 18432 # ~512MB
 +  end
  
-   def disabled?(option)
-     case disabled = CONFIG.disable_proxy
-@@ -326,6 +335,16 @@ class Config
+   # Invidious companion
+   property invidious_companion : Array(CompanionConfig) = [] of CompanionConfig
+@@ -346,6 +355,16 @@ class Config
        end
      end
  
@@ -318,5 +318,5 @@ index e826ae79..33d0a100 100644
    end
  end
 -- 
-2.54.0
+2.55.0
 
