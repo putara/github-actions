@@ -127,7 +127,6 @@ jobs:
             >> docker/Dockerfile.invidious
           cat docker/Dockerfile | sed \
             -e '/^FROM dependabot-crystal AS builder$/,$d' \
-            -e 's/\.\/Configure /\.\/Configure no-tests /' \
             > docker/Dockerfile.openssl
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
