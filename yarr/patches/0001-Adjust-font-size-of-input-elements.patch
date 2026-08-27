@@ -1,0 +1,33 @@
+From 598fd7abba5012a76c8f1a5aedeace2a77830152 Mon Sep 17 00:00:00 2001
+From: Your Name <you@example.com>
+Date: Thu, 27 Aug 2026 18:21:22 +1200
+Subject: [PATCH] Adjust font size of input elements
+
+---
+ src/frontend/css/app.css    | 1 +
+ src/frontend/css/extras.css | 4 ++++
+ 2 files changed, 5 insertions(+)
+ create mode 100644 src/frontend/css/extras.css
+
+diff --git a/src/frontend/css/app.css b/src/frontend/css/app.css
+index ac7d4e5..944d9f6 100644
+--- a/src/frontend/css/app.css
++++ b/src/frontend/css/app.css
+@@ -8,3 +8,4 @@
+ @import "responsive.css";
+ @import "utilities.css";
+ @import "variables.css";
++@import "extras.css";
+diff --git a/src/frontend/css/extras.css b/src/frontend/css/extras.css
+new file mode 100644
+index 0000000..3a559b8
+--- /dev/null
++++ b/src/frontend/css/extras.css
+@@ -0,0 +1,4 @@
++.c-input,
++.c-search input {
++  font-size: 16px;
++}
+-- 
+2.55.0
+
