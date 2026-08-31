@@ -1,0 +1,24 @@
+From c46ea5d9e230203da6116dea72ad3e4dfd3f9fb7 Mon Sep 17 00:00:00 2001
+From: Your Name <you@example.com>
+Date: Tue, 1 Sep 2026 02:01:15 +1200
+Subject: [PATCH] Disable scrolling
+
+---
+ src/frontend/css/extras.css | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/src/frontend/css/extras.css b/src/frontend/css/extras.css
+index 3a559b8..dac5625 100644
+--- a/src/frontend/css/extras.css
++++ b/src/frontend/css/extras.css
+@@ -1,3 +1,7 @@
++body {
++  overflow: hidden;
++}
++
+ .c-input,
+ .c-search input {
+   font-size: 16px;
+-- 
+2.55.0
+
