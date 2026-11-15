@@ -1,0 +1,19 @@
+name: Build teapot
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main", "dev", "test"]
+    paths:
+      - '.github/workflows/teapot.yml'
+      - '.github/workflows/build-docker.yml'
+      - 'teapot/**'
+  schedule:
+    - cron: "5 5 * * 2,5"
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-docker.yml
+    secrets: inherit
+    with:
+      name: teapot
+      url: https://github.com/4cuck/teapawt.git

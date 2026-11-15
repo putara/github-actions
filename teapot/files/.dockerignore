@@ -1,0 +1,9 @@
+.git/
+.github/
+.tack/
+data/
+nix/
+target/
+
+config/teapot.toml
+sessions.jsonl

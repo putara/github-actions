@@ -1,0 +1,70 @@
+From a1db4817f120b4e9d8291a34d5a8c07129c838a8 Mon Sep 17 00:00:00 2001
+From: putara <38089082+putara@users.noreply.github.com>
+Date: Sun, 15 Nov 2026 21:49:14 +1300
+Subject: [PATCH] More configurable default preferences
+
+---
+ src/config.rs      | 14 ++++++++++++++
+ src/types/prefs.rs | 14 +++++++-------
+ 2 files changed, 21 insertions(+), 7 deletions(-)
+
+diff --git a/src/config.rs b/src/config.rs
+index f75b53b..0d38ec4 100644
+--- a/src/config.rs
++++ b/src/config.rs
+@@ -508,6 +508,20 @@ pub struct PreferencesConfig {
+    pub replace_reddit: String,
+    #[serde(default, rename = "infiniteScroll")]
+    pub infinite_scroll: bool,
++   #[serde(default, rename = "bidiSupport")]
++   pub bidi_support: bool,
++   #[serde(default = "default_true", rename = "mp4Playback")]
++   pub mp4_playback: bool,
++   #[serde(default, rename = "hlsPlayback")]
++   pub hls_playback: bool,
++   #[serde(default = "default_true", rename = "autoplayGifs")]
++   pub autoplay_gifs: bool,
++   #[serde(default, rename = "muteVideos")]
++   pub mute_videos: bool,
++   #[serde(default = "default_true", rename = "useTwemoji")]
++   pub use_twemoji: bool,
++   #[serde(default, rename = "proxyMedia")]
++   pub proxy_media: bool,
+ }
+ 
+ // Default value functions
+diff --git a/src/types/prefs.rs b/src/types/prefs.rs
+index e0e8578..766dd54 100644
+--- a/src/types/prefs.rs
++++ b/src/types/prefs.rs
+@@ -46,20 +46,20 @@ impl Prefs {
+          theme: config.preferences.theme.clone(),
+          infinite_scroll: config.preferences.infinite_scroll,
+          sticky_profile: true,
+-         bidi_support: false,
+-         mp4_playback: true,
+-         hls_playback: false,
+-         autoplay_gifs: true,
+-         mute_videos: false,
++         bidi_support: config.preferences.bidi_support,
++         mp4_playback: config.preferences.mp4_playback,
++         hls_playback: config.preferences.hls_playback,
++         autoplay_gifs: config.preferences.autoplay_gifs,
++         mute_videos: config.preferences.mute_videos,
+          hide_tweet_stats: false,
+          hide_banner: false,
+          hide_pins: false,
+          hide_replies: false,
+          hide_community_notes: false,
+          square_avatars: true,
+-         use_twemoji: true,
++         use_twemoji: config.preferences.use_twemoji,
+          sticky_nav: true,
+-         proxy_media: false,
++         proxy_media: config.preferences.proxy_media,
+          font_size: String::new(),
+          replace_twitter: config.preferences.replace_twitter.clone(),
+          replace_youtube: config.preferences.replace_youtube.clone(),
+-- 
+2.56.0
+
