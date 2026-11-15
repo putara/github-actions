@@ -1,0 +1,203 @@
+on:
+  workflow_call:
+    inputs:
+      name:
+        required: true
+        type: string
+      url:
+        required: true
+        type: string
+      branch:
+        required: false
+        type: string
+        default: "master"
+      dockerfile:
+        required: false
+        type: string
+        default: "Dockerfile"
+      timezone:
+        required: false
+        type: string
+        default: "Pacific/Auckland"
+      build_args:
+        required: false
+        type: string
+
+jobs:
+  prep:
+    outputs:
+      docker-repo: ${{ steps.init.outputs.docker-repo }}
+      docker-expires: ${{ steps.init.outputs.docker-expires }}
+      upstream-rev: ${{ steps.init.outputs.upstream-rev }}
+      build-timestamp: ${{ steps.init.outputs.build-timestamp }}
+      skip-release: ${{ steps.check.outputs.skip-release }}
+    name: Preparation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Gather current build info
+        id: init
+        run: |
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
+            echo "docker-repo=${{ inputs.name }}" | tee -a "$GITHUB_OUTPUT"
+            echo "docker-expires=5w" | tee -a "$GITHUB_OUTPUT"
+          else
+            echo "docker-repo=test-${{ inputs.name }}" | tee -a "$GITHUB_OUTPUT"
+            echo "docker-expires=3d" | tee -a "$GITHUB_OUTPUT"
+          fi
+          rev=$(git ls-remote -h "${{ inputs.url }}" "${{ inputs.branch }}" | cut -f 1)
+          echo "upstream-rev=$rev" | tee -a "$GITHUB_OUTPUT"
+          echo "build-timestamp=$(TZ=${{ inputs.timezone }} date +%Y%m%d)" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Restore last build info
+        if: github.ref_name == 'main' && github.event_name == 'schedule'
+        uses: actions/cache@v6
+        with:
+          path: /tmp/GAC/${{ inputs.name }}
+          key: ${{ inputs.name }}-build
+
+      - name: Check last build info
+        id: check
+        run: |
+          tag_file=/tmp/GAC/${{ inputs.name }}/tag
+          last_tag=$(cat "$tag_file" 2>/dev/null || echo -n)
+          upstream_rev=${{ steps.init.outputs.upstream-rev }}
+          if [[ "$last_tag" != "$upstream_rev" ]]; then
+            mkdir -p "${tag_file%/*}"
+            echo "$upstream_rev" > "$tag_file"
+          else
+            echo 'skip-release=true' | tee -a "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    # amd/arm build inspired by https://github.com/iv-org/invidious/blob/master/.github/workflows/ci.yml
+    name: Build for ${{ matrix.name }}
+    needs: prep
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: AMD64
+            target: amd64
+          - os: ubuntu-24.04-arm
+            name: ARM64
+            target: arm64
+    runs-on: ${{ matrix.os }}
+    env:
+      SRC_DIR: /tmp/src/${{ inputs.name }}
+      WORK_DIR: ${{ github.workspace }}/${{ inputs.name }}
+      UPSTREAM_REV: ${{ needs.prep.outputs.upstream-rev }}
+      DOCKER_REPO: ${{ needs.prep.outputs.docker-repo }}
+      DOCKER_EXPIRES: ${{ needs.prep.outputs.docker-expires }}
+      BUILD_TIMESTAMP: ${{ needs.prep.outputs.build-timestamp }}
+
+    if: needs.prep.outputs.skip-release != 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Download source code
+        run: |
+          git config --global advice.detachedHead false
+          git config --global user.email nobody@localhost
+          git config --global user.name nobody
+          echo "::group::Clone repo"
+          git clone --revision="$UPSTREAM_REV" "${{ inputs.url }}" "$SRC_DIR"
+          cd "$SRC_DIR"
+          git config --add remote.origin.fetch '+refs/pull/*/head:refs/remotes/origin/pr/*'
+          git fetch --all
+          echo "::endgroup::"
+          echo "::group::Git info"
+          rev=$(git rev-parse HEAD)
+          echo "Rev: $rev"
+          echo "Logs:"
+          git log -3 --oneline
+          mkdir -p /tmp/GAC/${{ inputs.name }} && echo "$rev" > /tmp/GAC/${{ inputs.name }}/version
+          echo "::endgroup::"
+          if [[ "$rev" != "$UPSTREAM_REV" ]]; then
+            echo "::error::Unexpected mismatching revision"
+            echo "::error::- $rev got"
+            echo "::error::- $UPSTREAM_REV expected"
+            exit 1
+          fi
+
+      - name: Merge patches
+        run: |
+          cd "$SRC_DIR"
+          for i in $(grep -vE '^#' "$WORK_DIR/pr.list"); do
+            echo "::group::PR#$i"
+            git merge --no-edit "origin/pr/$i"
+            echo "::endgroup::"
+          done
+          for i in $(grep -vE '^#' "$WORK_DIR/xt.list"); do
+            echo "::group::$i"
+            git am -3 "$WORK_DIR/patches/$i"
+            echo "::endgroup::"
+          done
+
+      - name: Copy files
+        run: |
+          cd "$SRC_DIR"
+          dir="$WORK_DIR/files"
+          if [[ -d "$dir" ]]; then
+            cp -rv "$dir/." .
+          fi
+
+      - name: Run script
+        run: |
+          cd "$SRC_DIR"
+          file="$WORK_DIR/_run.sh"
+          if [[ -f "$file" ]]; then
+            bash "$file"
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to Quay.io
+        uses: docker/login-action@v4
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_PASSWORD }}
+
+      - name: Build and push ${{ inputs.name }} for ${{ matrix.name }}
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ env.SRC_DIR }}
+          file: ${{ env.SRC_DIR }}/${{ inputs.dockerfile }}
+          platforms: linux/${{ matrix.target }}
+          tags: |
+            quay.io/putara/${{ env.DOCKER_REPO }}:${{ matrix.target }}-latest
+            quay.io/putara/${{ env.DOCKER_REPO }}:${{ matrix.target }}-${{ env.BUILD_TIMESTAMP }}
+          labels: quay.expires-after=${{ env.DOCKER_EXPIRES }}
+          push: true
+          build-args: ${{ inputs.build_args }}
+
+  merge:
+    name: Merge
+    needs:
+      - prep
+      - build
+    env:
+      DOCKER_REPO: ${{ needs.prep.outputs.docker-repo }}
+      UPSTREAM_REV: ${{ needs.prep.outputs.upstream-rev }}
+    runs-on: ubuntu-latest
+
+    if: needs.prep.outputs.skip-release != 'true'
+    steps:
+      - name: Login to Quay.io
+        uses: docker/login-action@v4
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_PASSWORD }}
+
+      - name: Create and push ${{ inputs.name }}
+        uses: int128/docker-manifest-create-action@v2
+        with:
+          push: true
+          tags: quay.io/putara/${{ env.DOCKER_REPO }}:latest
+          sources: |
+             quay.io/putara/${{ env.DOCKER_REPO }}:amd64-latest
+             quay.io/putara/${{ env.DOCKER_REPO }}:arm64-latest
