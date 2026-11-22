@@ -1,0 +1,31 @@
+From 575f669e4ceec9b094de18ecd18a8ee9ae458cb9 Mon Sep 17 00:00:00 2001
+From: Your Name <you@example.com>
+Date: Sun, 22 Nov 2026 23:03:06 +1300
+Subject: [PATCH] Disable tooltip
+
+---
+ src/assets/javascripts/components/Tooltip.tsx | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/src/assets/javascripts/components/Tooltip.tsx b/src/assets/javascripts/components/Tooltip.tsx
+index 403d73f..3d36cd4 100644
+--- a/src/assets/javascripts/components/Tooltip.tsx
++++ b/src/assets/javascripts/components/Tooltip.tsx
+@@ -73,10 +73,10 @@ export default function Tooltip({ label, className = "", children }: TooltipProp
+       <span
+         ref={anchor}
+         className={`c-tooltip ${className}`.trim()}
+-        onMouseEnter={show}
+-        onMouseLeave={hide}
+-        onFocusIn={show}
+-        onFocusOut={hide}>
++        onMouseEnter={()=>{}}
++        onMouseLeave={()=>{}}
++        onFocusIn={()=>{}}
++        onFocusOut={()=>{}}>
+         {children}
+       </span>
+       {visible.value &&
+-- 
+2.55.0
+
